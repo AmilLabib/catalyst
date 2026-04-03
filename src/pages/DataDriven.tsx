@@ -5,6 +5,8 @@ import {
   Users,
   Calendar,
   ArrowRight,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -86,6 +88,36 @@ function DataDriven() {
   );
 
   const isHrAlert = mockAuditData.hr.absenteeism > 0.1;
+
+  // Health score computation for UMKM
+  const financialLast = financialSeries[financialSeries.length - 1];
+  const financialNetLast =
+    (financialLast?.revenue ?? 0) - (financialLast?.expenses ?? 0);
+  const financialIdeal = financialNetLast >= 0;
+
+  const salesCounts = mockAuditData.sales.perHour.map((s) => s.count);
+  const salesAvg =
+    salesCounts.length > 0
+      ? salesCounts.reduce((a, b) => a + b, 0) / salesCounts.length
+      : 0;
+  // Define ideal sales as having a reasonable average hourly count
+  const salesIdeal = salesAvg >= 60;
+
+  const hrIdeal = mockAuditData.hr.absenteeism <= 0.1;
+
+  // Operations ideal if there's no expense spike detected
+  const operationsIdeal = typeof spikeIdx !== "number";
+
+  const aspects = [
+    { key: "financial", label: "Financial", ideal: financialIdeal },
+    { key: "sales", label: "Sales", ideal: salesIdeal },
+    { key: "hr", label: "HR", ideal: hrIdeal },
+    { key: "operations", label: "Operations", ideal: operationsIdeal },
+  ];
+
+  const healthScore = Math.round(
+    (aspects.filter((a) => a.ideal).length / aspects.length) * 100,
+  );
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -232,8 +264,41 @@ function DataDriven() {
             </div>
           </section>
 
+          {/* UMKM Health Score */}
+          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold">UMKM Health Score</h2>
+            </div>
+
+            <div className="mb-3">
+              <div className="text-4xl font-extrabold text-primary">
+                {healthScore}%
+              </div>
+              <p className="text-sm text-gray-600">Overall UMKM health</p>
+            </div>
+
+            <div className="space-y-2">
+              {aspects.map((a) => (
+                <div key={a.key} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {a.ideal ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    )}
+                    <span className="font-medium">{a.label}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {a.ideal ? "Ideal" : "Not ideal"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Strategic Summary */}
-          <section className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md">
             <h2 className="text-xl font-semibold mb-2">Strategic Summary</h2>
             <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
               <li>
