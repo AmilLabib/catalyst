@@ -910,7 +910,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-bg overflow-x-hidden">
+    <div className="min-h-screen bg-transparent overflow-x-hidden">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <header className="flex items-center gap-4">
           <h1 className="text-4xl font-extrabold text-primary mb-1">

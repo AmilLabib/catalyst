@@ -5,6 +5,8 @@
 :root {
   /* Keep these in sync with tailwind.config.cjs colors */
   --bg: #e1ecf3; /* matches theme.colors.bg */
+  /* Brighter background for improved contrast and a fresher look */
+  --bg-bright: #f5fbff;
   --card-bg: #ffffff;
   --primary: #012a3d;
   --text: #486071; /* matches theme.colors.text */
@@ -16,9 +18,17 @@ body,
   height: 100%;
 }
 body {
-  background-color: var(--bg);
+  background-color: var(--bg-bright);
   color: var(--text);
-  font-family: Poppins, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  font-family:
+    Poppins,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial;
   min-height: 100%;
   margin: 0;
   -webkit-font-smoothing: antialiased;

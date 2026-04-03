@@ -1,6 +1,6 @@
 export default function Subscription() {
   return (
-    <div className="min-h-screen bg-bg py-8">
+    <div className="min-h-screen bg-transparent py-8">
       <div className="max-w-6xl mx-auto px-4">
         <h1 className="text-4xl font-extrabold text-primary mb-2">
           Subscription Packages

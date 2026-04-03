@@ -88,7 +88,7 @@ function DataDriven() {
   const isHrAlert = mockAuditData.hr.absenteeism > 0.1;
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="min-h-screen bg-transparent">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <header className="flex items-center gap-3 mb-2">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-primary">

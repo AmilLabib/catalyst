@@ -161,7 +161,7 @@ function SupplyChainDiagram({
     suppliers.length,
     rawMaterials.length,
     wip.length,
-    finished.length
+    finished.length,
   );
   const vGap = 28;
   const height =
@@ -494,21 +494,21 @@ export default function InternalManagement() {
     () =>
       mockData.inventory.rawMaterials.reduce(
         (s, m) => s + m.qty * m.unitCost,
-        0
+        0,
       ),
-    []
+    [],
   );
   const wipValue = useMemo(
     () => mockData.inventory.wip.reduce((s, m) => s + m.qty * m.unitCost, 0),
-    []
+    [],
   );
   const finishedValue = useMemo(
     () =>
       mockData.inventory.finishedGoods.reduce(
         (s, m) => s + m.qty * m.unitCost,
-        0
+        0,
       ),
-    []
+    [],
   );
 
   // removed funnel chart data
@@ -519,7 +519,7 @@ export default function InternalManagement() {
       { name: "Final Product", value: Math.round(finishedValue) },
       { name: "COGS (MTD)", value: mockData.inventory.cogsMonthToDate },
     ],
-    [rawValue, wipValue, finishedValue]
+    [rawValue, wipValue, finishedValue],
   );
 
   const inventoryBars = useMemo(
@@ -528,7 +528,7 @@ export default function InternalManagement() {
       { stage: "WIP", value: wipValue, color: palette.wip },
       { stage: "Final", value: finishedValue, color: palette.finished },
     ],
-    [rawValue, wipValue, finishedValue]
+    [rawValue, wipValue, finishedValue],
   );
 
   // Optional: local persistence for notes (lightweight enhancement)
@@ -545,7 +545,7 @@ export default function InternalManagement() {
   }, [note]);
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="min-h-screen bg-transparent">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <header className="flex items-center gap-3">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-primary mb-1">
@@ -721,8 +721,8 @@ export default function InternalManagement() {
                               a.status === "On-time"
                                 ? "bg-green-50 text-green-700 border-green-200"
                                 : a.status === "Slightly Late"
-                                ? "bg-yellow-50 text-yellow-800 border-yellow-200"
-                                : "bg-blue-50 text-blue-800 border-blue-200"
+                                  ? "bg-yellow-50 text-yellow-800 border-yellow-200"
+                                  : "bg-blue-50 text-blue-800 border-blue-200"
                             }`}
                           >
                             {a.status}
@@ -734,7 +734,7 @@ export default function InternalManagement() {
                             className="text-red-600 hover:underline"
                             onClick={() =>
                               setAttendance((prev) =>
-                                prev.filter((_, i2) => i2 !== idx)
+                                prev.filter((_, i2) => i2 !== idx),
                               )
                             }
                           >
@@ -895,7 +895,7 @@ export default function InternalManagement() {
                   <p className="text-sm text-gray-600">Avg Order Value</p>
                   <p className="text-2xl font-bold text-primary">
                     {formatRupiah(
-                      mockData.business.customerInsights.avgOrderValue
+                      mockData.business.customerInsights.avgOrderValue,
                     )}
                   </p>
                 </div>

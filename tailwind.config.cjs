@@ -10,6 +10,7 @@ module.exports = {
         // Core theme tokens used in components
         primary: "#012a3d",
         bg: "#e1ecf3",
+        bgBright: "#f5fbff",
         text: "#486071",
         // Full palette
         brand_dark: "#012a3d",

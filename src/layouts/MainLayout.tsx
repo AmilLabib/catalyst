@@ -7,7 +7,7 @@ export default function MainLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#f3f4fb] flex">
+    <div className="min-h-screen flex">
       {/* Sidebar (desktop + mobile handled inside component) */}
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
