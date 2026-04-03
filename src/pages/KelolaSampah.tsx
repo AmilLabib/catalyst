@@ -31,7 +31,7 @@ const rewards = [
   },
   {
     id: "rw2",
-    title: "Fitur Premium VARITY 1 Bulan",
+    title: "Fitur Premium CATALYST 1 Bulan",
     cost: 100,
     image: "/voucher-2.png",
   },
@@ -140,7 +140,7 @@ function KelolaSampah() {
                 </p>
               </div>
               <div className="rounded-xl border border-teal-200 bg-teal-50 p-4">
-                <p className="text-xs text-teal-700">Varity Points</p>
+                <p className="text-xs text-teal-700">Catalyst Points</p>
                 <p className="mt-1 text-3xl font-extrabold text-teal-700">
                   {userStats.points} Pts
                 </p>

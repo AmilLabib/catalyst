@@ -99,7 +99,7 @@ function Permodalan() {
           </h1>
         </header>
         <p className="text-sm text-gray-600 mb-6">
-          VARITY bukan pemberi pinjaman. Kami penghubung tepercaya ke mitra
+          CATALYST bukan pemberi pinjaman. Kami penghubung tepercaya ke mitra
           legal (Bank & P2P berizin OJK) dengan rekomendasi berbasis data untuk
           melindungi UMKM dari pinjaman ilegal.
         </p>
@@ -122,7 +122,7 @@ function Permodalan() {
                 Rp {preScreenLimit.toLocaleString("id-ID")}
               </p>
               <span className="mt-3 inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs border border-blue-300 bg-white text-blue-700">
-                <ShieldCheck className="w-4 h-4" /> Data Verified by VARITY
+                <ShieldCheck className="w-4 h-4" /> Data Verified by CATALYST
                 Audit System
               </span>
             </div>
@@ -244,7 +244,7 @@ function Permodalan() {
             <div className="inline-flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-700" />
               <p className="text-sm text-blue-800">
-                VARITY hanya bermitra dengan lembaga legal. Hindari Pinjaman
+                CATALYST hanya bermitra dengan lembaga legal. Hindari Pinjaman
                 Online ilegal yang tidak terdaftar di OJK.
               </p>
             </div>

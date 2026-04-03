@@ -80,9 +80,9 @@ function DataDriven() {
         (item) =>
           item.hour === peakHour
             ? "#f59e0b" /* gold-ish */
-            : "#60a5fa" /* blue */
+            : "#60a5fa" /* blue */,
       ),
-    [peakHour]
+    [peakHour],
   );
 
   const isHrAlert = mockAuditData.hr.absenteeism > 0.1;
@@ -246,7 +246,7 @@ function DataDriven() {
               <li>Tinjau jadwal shift malam dan kebijakan kehadiran.</li>
             </ul>
             <button className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white shadow">
-              Konsultasikan Masalah Ini dengan Pakar VARITY
+              Konsultasikan Masalah Ini dengan Pakar CATALYST
               <ArrowRight className="w-4 h-4" />
             </button>
           </section>

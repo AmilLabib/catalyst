@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { Menu, Calculator } from "lucide-react";
 
 type Props = {
   onMobileMenu?: () => void;
@@ -23,12 +23,22 @@ export default function Navbar({ onMobileMenu }: Props) {
           <Link to="/dashboard" className="flex items-center gap-3">
             <img src="/logo.png" alt="logo" className="w-10 md:w-12" />
             <span className="text-xl md:text-2xl font-extrabold text-primary tracking-wide">
-              VARITY
+              CATALYST
             </span>
           </Link>
         </div>
 
-        <div className="md:block hidden" />
+        <div className="md:block hidden">
+          <Link
+            to="/smart-pricing"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded hover:bg-gray-100"
+          >
+            <Calculator className="w-5 h-5 text-primary" />
+            <span className="text-sm font-medium text-primary">
+              Smart Pricing
+            </span>
+          </Link>
+        </div>
       </div>
     </div>
   );

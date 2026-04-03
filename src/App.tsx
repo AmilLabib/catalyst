@@ -10,6 +10,7 @@ import UmkmBerkembang from "./pages/UmkmBerkembang";
 import KelolaSampah from "./pages/KelolaSampah";
 import Permodalan from "./pages/Permodalan";
 import Subscription from "./pages/Subscription";
+import SmartPricing from "./components/SmartPricing";
 
 function LoginScreen() {
   const [passwordShown, setPasswordShown] = useState(false);
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="/kelola-sampah" element={<KelolaSampah />} />
         <Route path="/permodalan" element={<Permodalan />} />
         <Route path="/subscription" element={<Subscription />} />
+        <Route path="/smart-pricing" element={<SmartPricing />} />
       </Route>
     </Routes>
   );

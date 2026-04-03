@@ -11,6 +11,7 @@ import {
   Leaf,
   ShieldCheck,
   CircleDollarSign,
+  Calculator,
 } from "lucide-react";
 
 type Props = {
@@ -88,6 +89,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: Props) {
           {item("Kelola Sampah", "/kelola-sampah", Leaf)}
           {item("Permodalan", "/permodalan", ShieldCheck)}
           {item("Subscription", "/subscription", CircleDollarSign)}
+          {item("Smart Pricing", "/smart-pricing", Calculator)}
         </nav>
       </aside>
 
@@ -114,6 +116,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: Props) {
               {item("Kelola Sampah", "/kelola-sampah", Leaf)}
               {item("Permodalan", "/permodalan", ShieldCheck)}
               {item("Subscription", "/subscription", CircleDollarSign)}
+              {item("Smart Pricing", "/smart-pricing", Calculator)}
             </nav>
           </div>
         </div>

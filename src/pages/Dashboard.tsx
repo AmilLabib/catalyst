@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Trophy,
 } from "lucide-react";
+import SmartPricing from "../components/SmartPricing";
 
 export default function Dashboard() {
   return (
@@ -161,7 +162,7 @@ export default function Dashboard() {
               <span className="font-bold text-primary">120 Kg</span>
             </div>
             <div className="flex justify-between">
-              <span>Varity Points</span>
+              <span>Catalyst Points</span>
               <span className="font-bold text-primary">600</span>
             </div>
           </div>
@@ -201,6 +202,10 @@ export default function Dashboard() {
           </div>
         </section>
       </main>
+
+      <section className="mt-8">
+        <SmartPricing />
+      </section>
     </div>
   );
 }
