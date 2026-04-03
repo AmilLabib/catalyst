@@ -6,7 +6,6 @@ import {
   formatRupiah,
 } from "../data/financials";
 import {
-  Leaf,
   ShieldCheck,
   BarChart2,
   Factory,
@@ -150,31 +149,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Kelola Sampah Summary */}
-        <section className="lg:col-span-4 bg-white rounded-xl p-4 shadow">
-          <div className="flex items-center gap-2 mb-2">
-            <Leaf className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-semibold">Kelola Sampah</h3>
-          </div>
-          <div className="space-y-2 text-sm text-gray-700">
-            <div className="flex justify-between">
-              <span>Total Daur Ulang</span>
-              <span className="font-bold text-primary">120 Kg</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Catalyst Points</span>
-              <span className="font-bold text-primary">600</span>
-            </div>
-          </div>
-          <div className="mt-3">
-            <Link
-              to="/kelola-sampah"
-              className="text-primary text-sm hover:underline"
-            >
-              Kelola
-            </Link>
-          </div>
-        </section>
+        {/* Kelola Sampah feature removed */}
 
         {/* Permodalan Summary */}
         <section className="lg:col-span-4 bg-white rounded-xl p-4 shadow">

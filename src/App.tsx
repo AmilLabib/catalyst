@@ -7,7 +7,6 @@ import InstructionsModal from "./components/InstructionsModal";
 import InternalManagement from "./pages/InternalManagement";
 import DataDriven from "./pages/DataDriven";
 import UmkmBerkembang from "./pages/UmkmBerkembang";
-import KelolaSampah from "./pages/KelolaSampah";
 import Permodalan from "./pages/Permodalan";
 import Subscription from "./pages/Subscription";
 import SmartPricing from "./components/SmartPricing";
@@ -92,7 +91,6 @@ export default function App() {
         <Route path="/internal-management" element={<InternalManagement />} />
         <Route path="/data-driven" element={<DataDriven />} />
         <Route path="/umkm-berkembang" element={<UmkmBerkembang />} />
-        <Route path="/kelola-sampah" element={<KelolaSampah />} />
         <Route path="/permodalan" element={<Permodalan />} />
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/smart-pricing" element={<SmartPricing />} />

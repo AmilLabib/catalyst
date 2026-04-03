@@ -8,10 +8,12 @@ import {
   Factory,
   AlertTriangle,
   Trophy,
-  Leaf,
   ShieldCheck,
   CircleDollarSign,
   Calculator,
+  Settings,
+  LogOut,
+  User2,
 } from "lucide-react";
 
 type Props = {
@@ -50,47 +52,93 @@ export default function Sidebar({ mobileOpen = false, onClose }: Props) {
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`bg-white rounded-xl p-3 shadow-md hidden md:block transition-all duration-300 ease-in-out overflow-hidden ${
-          collapsed ? "w-20" : "w-56"
+        className={`hidden md:flex flex-col h-screen sticky top-0 bg-white border-r px-4 py-4 transition-all duration-300 ease-in-out ${
+          collapsed ? "w-20" : "w-64"
         }`}
       >
-        <div className="mb-6 flex items-center justify-between">
-          <div
-            className={`transition-all duration-300 ease-in-out ${
-              collapsed ? "w-8" : "w-40"
-            }`}
+        {/* Top logo and toggle */}
+        <div className="mb-8 flex items-center justify-between">
+          <button
+            className="flex items-center gap-2"
+            onClick={() => setCollapsed((s) => !s)}
           >
             <img
               src="/logo.png"
               alt="logo"
-              className={`block ${collapsed ? "w-8" : "w-20"}`}
+              className={`transition-all ${collapsed ? "w-8" : "w-9"}`}
             />
-          </div>
+            <span
+              className={`text-sm font-semibold text-gray-800 tracking-wide transition-all origin-left ${
+                collapsed ? "opacity-0 scale-95 w-0" : "opacity-100 scale-100"
+              }`}
+            >
+              Catalyst
+            </span>
+          </button>
 
           <button
             onClick={() => setCollapsed((s) => !s)}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="p-1 rounded hover:bg-gray-100"
+            className="p-1.5 rounded-md hover:bg-gray-100"
           >
             {collapsed ? (
-              <X className="w-5 h-5" />
+              <Menu className="w-4 h-4" />
             ) : (
-              <Menu className="w-5 h-5" />
+              <X className="w-4 h-4" />
             )}
           </button>
         </div>
 
-        <nav className="space-y-1">
-          {item("Dashboard", "/dashboard", Home)}
-          {item("Financial Reporting", "/financial", BarChart2)}
-          {item("Internal Management", "/internal-management", Factory)}
-          {item("Data Driven Audit", "/data-driven", AlertTriangle)}
-          {item("UMKM Berkembang", "/umkm-berkembang", Trophy)}
-          {item("Kelola Sampah", "/kelola-sampah", Leaf)}
-          {item("Permodalan", "/permodalan", ShieldCheck)}
-          {item("Subscription", "/subscription", CircleDollarSign)}
-          {item("Smart Pricing", "/smart-pricing", Calculator)}
+        {/* Main navigation */}
+        <nav className="flex-1 space-y-6 overflow-y-auto">
+          <div>
+            <p
+              className={`text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-2 ${
+                collapsed ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              Overview
+            </p>
+            <div className="space-y-1">
+              {item("Dashboard", "/dashboard", Home)}
+              {item("Smart Pricing", "/smart-pricing", Calculator)}
+            </div>
+          </div>
+
+          <div>
+            <p
+              className={`text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-2 ${
+                collapsed ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              Modules
+            </p>
+            <div className="space-y-1">
+              {item("Financial Reporting", "/financial", BarChart2)}
+              {item("Internal Management", "/internal-management", Factory)}
+              {item("Data Driven Audit", "/data-driven", AlertTriangle)}
+              {item("UMKM Berkembang", "/umkm-berkembang", Trophy)}
+              {item("Permodalan", "/permodalan", ShieldCheck)}
+              {item("Subscription", "/subscription", CircleDollarSign)}
+            </div>
+          </div>
         </nav>
+
+        {/* Bottom user/settings/logout */}
+        <div className="mt-4 pt-4 border-t space-y-2">
+          <button className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-gray-50 text-sm text-gray-700">
+            <User2 className="w-4 h-4" />
+            {!collapsed && <span>Profile</span>}
+          </button>
+          <button className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-gray-50 text-sm text-gray-700">
+            <Settings className="w-4 h-4" />
+            {!collapsed && <span>Settings</span>}
+          </button>
+          <button className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-red-50 text-sm text-red-600">
+            <LogOut className="w-4 h-4" />
+            {!collapsed && <span>Logout</span>}
+          </button>
+        </div>
       </aside>
 
       {/* Mobile drawer overlay */}
@@ -113,7 +161,6 @@ export default function Sidebar({ mobileOpen = false, onClose }: Props) {
               {item("Internal Management", "/internal-management", Factory)}
               {item("Data Driven Audit", "/data-driven", AlertTriangle)}
               {item("UMKM Berkembang", "/umkm-berkembang", Trophy)}
-              {item("Kelola Sampah", "/kelola-sampah", Leaf)}
               {item("Permodalan", "/permodalan", ShieldCheck)}
               {item("Subscription", "/subscription", CircleDollarSign)}
               {item("Smart Pricing", "/smart-pricing", Calculator)}

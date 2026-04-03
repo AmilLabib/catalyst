@@ -27,7 +27,6 @@ export default function Subscription() {
               <p className="font-medium">Unlocked Features</p>
               <ul className="list-disc ml-5 mt-2 text-gray-700 space-y-1">
                 <li>UMKM berkembang</li>
-                <li>Tata Kelola Sampah</li>
                 <li>Pelaporan Keuangan (Tanpa QR) Maks. 3x</li>
               </ul>
             </div>
@@ -58,7 +57,6 @@ export default function Subscription() {
               <p className="font-medium">Unlocked Features</p>
               <ul className="list-disc ml-5 mt-2 text-gray-700 space-y-1">
                 <li>UMKM berkembang</li>
-                <li>Tata Kelola Sampah</li>
                 <li>Pelaporan Keuangan (Tanpa QR)</li>
                 <li>Financial Reporting Authomatization</li>
                 <li>Permodalan</li>
@@ -94,7 +92,6 @@ export default function Subscription() {
               <p className="font-medium">Unlocked Features</p>
               <ul className="list-disc ml-5 mt-2 text-gray-700 space-y-1">
                 <li>UMKM berkembang</li>
-                <li>Tata Kelola Sampah</li>
                 <li>Pelaporan Keuangan (Tanpa QR)</li>
                 <li>Financial Reporting Authomatization</li>
                 <li>Permodalan</li>

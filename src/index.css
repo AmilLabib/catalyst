@@ -3,10 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --bg: #e8ecf2;
+  /* Keep these in sync with tailwind.config.cjs colors */
+  --bg: #e1ecf3; /* matches theme.colors.bg */
   --card-bg: #ffffff;
   --primary: #012a3d;
-  --text: #000000;
+  --text: #486071; /* matches theme.colors.text */
 }
 
 html,

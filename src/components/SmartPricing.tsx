@@ -16,10 +16,11 @@ const initialState: FormState = {
 };
 
 function formatCurrency(n: number) {
-  return n.toLocaleString(undefined, {
+  // Format numbers as Indonesian Rupiah, no fractional digits
+  return n.toLocaleString("id-ID", {
     style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
+    currency: "IDR",
+    maximumFractionDigits: 0,
   });
 }
 
@@ -30,6 +31,7 @@ export default function SmartPricing() {
     lowest: number;
     highest: number;
   } | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (k: keyof FormState, v: string) => {
@@ -66,20 +68,75 @@ export default function SmartPricing() {
         marketAvg * 1.02,
         breakEven * (1 + marginTarget) + (marketAvg - breakEven) * 0.5,
       );
-      return Math.round(recommended * 100) / 100;
+      return Math.round(recommended);
     }
     if (marketAvg >= breakEven * 0.95) {
       // near market avg: small premium over break-even
       const recommended = Math.max(breakEven * 1.12, marketAvg);
-      return Math.round(recommended * 100) / 100;
+      return Math.round(recommended);
     }
     // market lower than break-even
-    return Math.round(breakEven * 100) / 100;
+    return Math.round(breakEven);
   };
 
   const handleFetchMarket = async () => {
     if (!form.productName) return;
     setLoading(true);
+    setImageUrl(null);
+
+    // First try Gemini assistant to fetch live e-commerce data (expects JSON-only reply)
+    try {
+      const prompt = `You are an e-commerce aggregator. Given the product name \"${String(
+        form.productName,
+      ).replace(
+        /\"/g,
+        '\\"',
+      )}\", return a JSON object ONLY (no extra text) with the following keys:\n{"average": <number>, "lowest": <number>, "highest": <number>, "image": "<url>"}\nPrices should be numbers representing Indonesian Rupiah (IDR). If you cannot find exact values, provide reasonable estimates. Respond strictly with valid JSON.`;
+
+      const res = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt }),
+      });
+
+      const payload = await res.json();
+      const assistantReply = payload?.reply ?? payload?.replyText ?? "";
+
+      // Try to parse assistant reply as JSON
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(assistantReply);
+      } catch (err) {
+        // If assistant returned extra text, try to extract JSON substring
+        const jsonMatch = assistantReply.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            parsed = null;
+          }
+        }
+      }
+
+      if (parsed && (parsed.average || parsed.lowest || parsed.highest)) {
+        const m = {
+          average: Number(parsed.average) || 0,
+          lowest: Number(parsed.lowest) || 0,
+          highest: Number(parsed.highest) || 0,
+        };
+        setMarket(m);
+        if (parsed.image) setImageUrl(String(parsed.image));
+        else setImageUrl(null);
+        setLoading(false);
+        return;
+      }
+      // else fallthrough to mock
+    } catch (err) {
+      // ignore and fallback to mock
+      console.warn("Gemini fetch failed, falling back to mock", err);
+    }
+
+    // Fallback: deterministic mock pricing
     const m = await fetchMarketPricing(form.productName);
     setMarket(m);
     setLoading(false);
@@ -94,17 +151,22 @@ export default function SmartPricing() {
 
   if (market && breakEven !== null) {
     recommendedPrice = computeRecommendation(market.average, breakEven);
-    profitMarginPct =
-      Math.round(
-        ((recommendedPrice - Number(form.cogs)) / recommendedPrice) * 10000,
-      ) / 100;
+    // Ensure no division by zero and compute margin as %
+    if (recommendedPrice && Number(form.cogs) >= 0 && recommendedPrice !== 0) {
+      profitMarginPct =
+        Math.round(
+          ((recommendedPrice - Number(form.cogs)) / recommendedPrice) * 10000,
+        ) / 100;
+    } else {
+      profitMarginPct = null;
+    }
 
     if (market.average >= breakEven * 1.25) {
-      rationale = `Market average (${formatCurrency(market.average)}) is well above your break-even (${formatCurrency(breakEven)}). We recommend a competitive premium while testing elasticity.`;
+      rationale = `Market average (${formatCurrency(Math.round(market.average))}) is well above your break-even (${formatCurrency(Math.round(breakEven))}). We recommend a competitive premium while testing elasticity.`;
     } else if (market.average >= breakEven * 0.95) {
-      rationale = `Market average (${formatCurrency(market.average)}) is near your break-even. Recommend a modest margin and monitor conversions.`;
+      rationale = `Market average (${formatCurrency(Math.round(market.average))}) is near your break-even. Recommend a modest margin and monitor conversions.`;
     } else {
-      rationale = `Market prices (${formatCurrency(market.lowest)} - ${formatCurrency(market.highest)}) are below your break-even (${formatCurrency(breakEven)}). Consider reducing COGS or lowering fixed costs before pricing above break-even.`;
+      rationale = `Market prices (${formatCurrency(Math.round(market.lowest))} - ${formatCurrency(Math.round(market.highest))}) are below your break-even (${formatCurrency(Math.round(breakEven))}). Consider reducing COGS or lowering fixed costs before pricing above break-even.`;
     }
   }
 
@@ -126,28 +188,28 @@ export default function SmartPricing() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            COGS per unit (USD)
+            COGS per unit (Rp)
           </label>
           <input
             value={form.cogs === "" ? "" : String(form.cogs)}
             onChange={(e) => handleChange("cogs", e.target.value)}
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             className="mt-1 block w-full rounded border px-3 py-2"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Monthly Fixed Costs (USD)
+            Monthly Fixed Costs (Rp)
           </label>
           <input
             value={form.monthlyFixed === "" ? "" : String(form.monthlyFixed)}
             onChange={(e) => handleChange("monthlyFixed", e.target.value)}
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             className="mt-1 block w-full rounded border px-3 py-2"
           />
         </div>
@@ -198,6 +260,15 @@ export default function SmartPricing() {
             <h5 className="font-medium">Market Snapshot</h5>
             {market ? (
               <div className="mt-2">
+                {imageUrl && (
+                  <div className="mb-3">
+                    <img
+                      src={imageUrl}
+                      alt={form.productName || "product"}
+                      className="w-28 h-28 object-cover rounded"
+                    />
+                  </div>
+                )}
                 <p>
                   Average: <strong>{formatCurrency(market.average)}</strong>
                 </p>
