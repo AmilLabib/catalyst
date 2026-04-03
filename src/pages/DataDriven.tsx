@@ -238,7 +238,7 @@ function DataDriven() {
           </section>
 
           {/* HR Performance Audit */}
-          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md h-full flex flex-col">
             <div className="flex items-center gap-2 mb-3">
               <Users className="w-5 h-5 text-gray-500" />
               <h2 className="text-xl font-semibold">HR Performance Audit</h2>
@@ -265,7 +265,7 @@ function DataDriven() {
           </section>
 
           {/* UMKM Health Score */}
-          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md h-full flex flex-col">
             <div className="flex items-center gap-2 mb-3">
               <Calendar className="w-5 h-5 text-primary" />
               <h2 className="text-xl font-semibold">UMKM Health Score</h2>
@@ -298,7 +298,7 @@ function DataDriven() {
           </section>
 
           {/* Strategic Summary */}
-          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md h-full flex flex-col">
             <h2 className="text-xl font-semibold mb-2">Strategic Summary</h2>
             <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
               <li>
@@ -310,7 +310,7 @@ function DataDriven() {
               </li>
               <li>Tinjau jadwal shift malam dan kebijakan kehadiran.</li>
             </ul>
-            <button className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white shadow">
+            <button className="mt-auto inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white shadow">
               Konsultasikan Masalah Ini dengan Pakar CATALYST
               <ArrowRight className="w-4 h-4" />
             </button>
