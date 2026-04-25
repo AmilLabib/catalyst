@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ShieldCheck,
   Banknote,
@@ -53,6 +54,7 @@ const loanProducts: LoanProduct[] = [
 ];
 
 function Permodalan() {
+  usePageTitle("Permodalan");
   const preScreenLimit = 50_000_000; // Rp 50jt based on mock performance
   const [amount, setAmount] = useState<number>(20_000_000);
   const [tenor, setTenor] = useState<number>(12);
@@ -93,12 +95,7 @@ function Permodalan() {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <header className="flex items-center gap-3 mb-4">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-primary">
-            Permodalan
-          </h1>
-        </header>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-gray-600 mb-6 mt-1">
           CATALYST bukan pemberi pinjaman. Kami penghubung tepercaya ke mitra
           legal (Bank & P2P berizin OJK) dengan rekomendasi berbasis data untuk
           melindungi UMKM dari pinjaman ilegal.
@@ -106,7 +103,7 @@ function Permodalan() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Financial Health & Limit Calculator */}
-          <section className="lg:col-span-5 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-5 bg-white rounded-2xl p-6 shadow-md card-hover">
             <div className="flex items-center gap-2 mb-3">
               <Banknote className="w-5 h-5 text-blue-700" />
               <h2 className="text-xl font-semibold">
@@ -129,7 +126,7 @@ function Permodalan() {
           </section>
 
           {/* Smart Loan Simulator */}
-          <section className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-md card-hover">
             <div className="flex items-center gap-2 mb-3">
               <Percent className="w-5 h-5 text-blue-700" />
               <h2 className="text-xl font-semibold">Smart Loan Simulator</h2>

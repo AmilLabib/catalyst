@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Reusable hover animation for all cards (no @apply to keep CSS validators happy) */
+  .card-hover {
+    transition-property: transform, box-shadow;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    will-change: transform;
+  }
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 20px 25px -5px rgb(0 0 0 / 0.08),
+      0 8px 10px -6px rgb(0 0 0 / 0.08);
+  }
+}
+
 :root {
   /* Keep these in sync with tailwind.config.cjs colors */
   --bg: #e1ecf3; /* matches theme.colors.bg */

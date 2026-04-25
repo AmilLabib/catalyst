@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PieChart,
   Pie,
@@ -16,8 +16,8 @@ import {
   formatRupiah,
   checkConsistency,
 } from "../data/financials";
-import { useEffect } from "react";
 import GeminiAssistant from "../components/GeminiAssistant";
+import { useDemoMode } from "../context/DemoModeContext";
 
 // Removed unused chart demo data
 
@@ -40,15 +40,6 @@ type Account = {
   name: string;
   type: AccountType;
   target: StatementTarget;
-};
-
-type AccountDraft = {
-  id?: string;
-  code: string;
-  name: string;
-  type: AccountType;
-  targetKind: StatementTarget["kind"];
-  targetField: string;
 };
 
 const CHART_OF_ACCOUNTS: Account[] = [
@@ -198,6 +189,214 @@ type JournalEntry = {
   description?: string;
   lines: JournalLine[];
 };
+
+function createDemoJournalEntries(todayISO: string): JournalEntry[] {
+  // Generate 50 transactions across the last 45 days.
+  // We purposely mix:
+  // - capital injection
+  // - inventory purchases
+  // - cash sales + their COGS
+  // - operating expenses
+  // - interest + tax
+  // - occasional dividends
+  // to ensure BS/IS/CF all update.
+
+  const baseTs = Date.now();
+  const toISO = (daysAgo: number) =>
+    new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+  const rand = (seed: number) => {
+    // simple deterministic pseudo-rng 0..1
+    const x = Math.sin(seed * 999) * 10000;
+    return x - Math.floor(x);
+  };
+
+  const entries: JournalEntry[] = [];
+
+  // 1) initial capital injection so we have cash
+  entries.push({
+    id: `demo-${baseTs}-cap`,
+    date: toISO(45),
+    description: "Owner injects capital",
+    lines: [
+      { id: "cap1", side: "debit", accountId: "cash", amount: 60_000_000 },
+      { id: "cap2", side: "credit", accountId: "sc", amount: 60_000_000 },
+    ],
+  });
+
+  let i = 0;
+  while (entries.length < 50) {
+    i += 1;
+    const r = rand(i);
+    const daysAgo = Math.floor(rand(i + 10) * 45);
+    const date = daysAgo === 0 ? todayISO : toISO(daysAgo);
+
+    // amounts (IDR)
+    const sales =
+      Math.round((2_000_000 + rand(i + 20) * 10_000_000) / 50_000) * 50_000;
+    const cogs = Math.round(sales * (0.32 + rand(i + 21) * 0.18));
+    const invBuy =
+      Math.round((1_000_000 + rand(i + 30) * 6_000_000) / 50_000) * 50_000;
+    const opex =
+      Math.round((150_000 + rand(i + 31) * 2_000_000) / 50_000) * 50_000;
+    const interest =
+      Math.round((50_000 + rand(i + 40) * 400_000) / 10_000) * 10_000;
+    const tax =
+      Math.round((100_000 + rand(i + 41) * 900_000) / 10_000) * 10_000;
+
+    if (r < 0.35) {
+      // cash sales
+      entries.push({
+        id: `demo-${baseTs}-sale-${entries.length}`,
+        date,
+        description: "Sales (cash)",
+        lines: [
+          {
+            id: `s${entries.length}-1`,
+            side: "debit",
+            accountId: "cash",
+            amount: sales,
+          },
+          {
+            id: `s${entries.length}-2`,
+            side: "credit",
+            accountId: "rev",
+            amount: sales,
+          },
+        ],
+      });
+      if (entries.length < 50) {
+        // record COGS right after
+        entries.push({
+          id: `demo-${baseTs}-cogs-${entries.length}`,
+          date,
+          description: "Record COGS",
+          lines: [
+            {
+              id: `c${entries.length}-1`,
+              side: "debit",
+              accountId: "cogs",
+              amount: cogs,
+            },
+            {
+              id: `c${entries.length}-2`,
+              side: "credit",
+              accountId: "inv",
+              amount: cogs,
+            },
+          ],
+        });
+      }
+      continue;
+    }
+
+    if (r < 0.55) {
+      // inventory purchase
+      entries.push({
+        id: `demo-${baseTs}-inv-${entries.length}`,
+        date,
+        description: "Purchase inventory (cash)",
+        lines: [
+          {
+            id: `i${entries.length}-1`,
+            side: "debit",
+            accountId: "inv",
+            amount: invBuy,
+          },
+          {
+            id: `i${entries.length}-2`,
+            side: "credit",
+            accountId: "cash",
+            amount: invBuy,
+          },
+        ],
+      });
+      continue;
+    }
+
+    if (r < 0.82) {
+      // operating expenses
+      const expenseAccount = r < 0.68 ? "rent" : "opex";
+      const desc =
+        expenseAccount === "rent" ? "Pay rent" : "Pay operating expense";
+      entries.push({
+        id: `demo-${baseTs}-opex-${entries.length}`,
+        date,
+        description: desc,
+        lines: [
+          {
+            id: `o${entries.length}-1`,
+            side: "debit",
+            accountId: expenseAccount,
+            amount: opex,
+          },
+          {
+            id: `o${entries.length}-2`,
+            side: "credit",
+            accountId: "cash",
+            amount: opex,
+          },
+        ],
+      });
+      continue;
+    }
+
+    if (r < 0.93) {
+      // interest or tax
+      const takeInterest = r < 0.88;
+      entries.push({
+        id: `demo-${baseTs}-fin-${entries.length}`,
+        date,
+        description: takeInterest ? "Pay interest" : "Pay tax",
+        lines: [
+          {
+            id: `f${entries.length}-1`,
+            side: "debit",
+            accountId: takeInterest ? "intExp" : "taxExp",
+            amount: takeInterest ? interest : tax,
+          },
+          {
+            id: `f${entries.length}-2`,
+            side: "credit",
+            accountId: "cash",
+            amount: takeInterest ? interest : tax,
+          },
+        ],
+      });
+      continue;
+    }
+
+    // dividends (distribution)
+    const divAmt =
+      Math.round((250_000 + rand(i + 70) * 2_000_000) / 50_000) * 50_000;
+    entries.push({
+      id: `demo-${baseTs}-div-${entries.length}`,
+      date,
+      description: "Pay dividends",
+      lines: [
+        {
+          id: `d${entries.length}-1`,
+          side: "debit",
+          accountId: "div",
+          amount: divAmt,
+        },
+        {
+          id: `d${entries.length}-2`,
+          side: "credit",
+          accountId: "cash",
+          amount: divAmt,
+        },
+      ],
+    });
+  }
+
+  // show newest first (matches UI expectation)
+  return entries.sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+  );
+}
 
 // Alerts
 type AlertSeverity = "error" | "warning" | "info";
@@ -414,174 +613,21 @@ function formatRpCompact(value: number) {
   return `${sign}${formatRupiah(abs)}`;
 }
 
-export default function Dashboard() {
+import { usePageTitle } from "../hooks/usePageTitle";
+
+export default function Financial() {
+  usePageTitle("Financial");
+  const { demoRunId } = useDemoMode();
   const [activeTab, setActiveTab] = useState(0);
 
-  // Editable chart of accounts (CRUD)
-  const [accounts, setAccounts] = useState<Account[]>(() => CHART_OF_ACCOUNTS);
-  const [accountDraft, setAccountDraft] = useState<AccountDraft>(() => ({
-    code: "",
-    name: "",
-    type: "asset",
-    targetKind: "bs",
-    targetField: "cash",
-  }));
-  const [accountsQuery, setAccountsQuery] = useState("");
-  const [accountsError, setAccountsError] = useState<string | null>(null);
-
-  const availableTargetFields = useMemo(() => {
-    if (accountDraft.targetKind === "bs") return Object.keys(balanceSheet2024);
-    if (accountDraft.targetKind === "is")
-      return Object.keys(incomeStatement2024);
-    return Object.keys(changesInEquity2024);
-  }, [accountDraft.targetKind]);
+  // Fixed chart of accounts (CRUD removed)
+  const accounts = CHART_OF_ACCOUNTS;
 
   const findAccount = (id: string | undefined) =>
     accounts.find((a) => a.id === id);
 
-  const filteredAccountsForCrud = useMemo(() => {
-    const q = accountsQuery.trim().toLowerCase();
-    if (!q) return accounts;
-    return accounts.filter((a) =>
-      `${a.code} ${a.name} ${a.type} ${a.target.kind} ${String(a.target.field)}`
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [accounts, accountsQuery]);
+  // Accounts CRUD handlers removed by request.
 
-  const makeAccountId = (code: string, name: string) => {
-    const base = `${code}-${name}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-      .slice(0, 40);
-    const suffix = Math.random().toString(36).slice(2, 6);
-    return `${base || "acc"}-${suffix}`;
-  };
-
-  const resetAccountDraft = () => {
-    setAccountDraft({
-      code: "",
-      name: "",
-      type: "asset",
-      targetKind: "bs",
-      targetField: "cash",
-    });
-    setAccountsError(null);
-  };
-
-  const startEditAccount = (acc: Account) => {
-    setAccountDraft({
-      id: acc.id,
-      code: acc.code,
-      name: acc.name,
-      type: acc.type,
-      targetKind: acc.target.kind,
-      targetField: String(acc.target.field),
-    });
-    setAccountsError(null);
-  };
-
-  const validateAccountDraft = () => {
-    const code = accountDraft.code.trim();
-    const name = accountDraft.name.trim();
-    if (!code || !name) return "Code and name are required.";
-    if (!/^[0-9A-Za-z_-]+$/.test(code))
-      return "Code must be alphanumeric (optionally - or _).";
-    if (!availableTargetFields.includes(accountDraft.targetField))
-      return "Invalid target field.";
-    const duplicateCode = accounts.some(
-      (a) =>
-        a.code.toLowerCase() === code.toLowerCase() && a.id !== accountDraft.id,
-    );
-    if (duplicateCode) return "Code already exists.";
-    return null;
-  };
-
-  const upsertAccount = () => {
-    const err = validateAccountDraft();
-    if (err) {
-      setAccountsError(err);
-      return;
-    }
-
-    const code = accountDraft.code.trim();
-    const name = accountDraft.name.trim();
-    const id = accountDraft.id || makeAccountId(code, name);
-
-    const target: StatementTarget =
-      accountDraft.targetKind === "bs"
-        ? {
-            kind: "bs",
-            field: accountDraft.targetField as keyof typeof balanceSheet2024,
-          }
-        : accountDraft.targetKind === "is"
-          ? {
-              kind: "is",
-              field:
-                accountDraft.targetField as keyof typeof incomeStatement2024,
-            }
-          : {
-              kind: "equity",
-              field:
-                accountDraft.targetField as keyof typeof changesInEquity2024,
-            };
-
-    const next: Account = {
-      id,
-      code,
-      name,
-      type: accountDraft.type,
-      target,
-    };
-
-    setAccounts((prev) => {
-      const exists = prev.some((a) => a.id === id);
-      const updated = exists
-        ? prev.map((a) => (a.id === id ? next : a))
-        : [...prev, next];
-      return updated.sort((a, b) =>
-        a.code > b.code ? 1 : a.code < b.code ? -1 : 0,
-      );
-    });
-
-    resetAccountDraft();
-  };
-
-  const deleteAccount = (id: string) => {
-    if (id === "cash") {
-      setAccountsError("The Cash account can't be deleted.");
-      return;
-    }
-    const used = entries.some((e) => e.lines.some((l) => l.accountId === id));
-    if (used) {
-      setAccountsError(
-        "This account is used in existing journal entries. Remove those entries first.",
-      );
-      return;
-    }
-    setAccounts((prev) => prev.filter((a) => a.id !== id));
-    setDebitLinesUI((prev) =>
-      prev.map((l) => (l.accountId === id ? { ...l, accountId: "" } : l)),
-    );
-    setCreditLinesUI((prev) =>
-      prev.map((l) => (l.accountId === id ? { ...l, accountId: "" } : l)),
-    );
-    if (accountDraft.id === id) resetAccountDraft();
-    setAccountsError(null);
-  };
-
-  const resetAccountsToDefault = () => {
-    if (entries.length > 0) {
-      setAccountsError(
-        "Reset disabled while journal entries exist (to avoid breaking mappings).",
-      );
-      return;
-    }
-    setAccounts(CHART_OF_ACCOUNTS);
-    resetAccountDraft();
-    setAccountsError(null);
-  };
   // Journal UI state
   const [debitLinesUI, setDebitLinesUI] = useState<
     Array<{ id: string; accountId: string; amount: string }>
@@ -596,8 +642,13 @@ export default function Dashboard() {
   const [debitFilter, setDebitFilter] = useState("");
   const [creditFilter, setCreditFilter] = useState("");
   const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [journalPage, setJournalPage] = useState(1);
+  const journalPageSize = 10;
   const [showDraftAlerts, setShowDraftAlerts] = useState(false);
   const alertPanelRef = useRef<HTMLDivElement | null>(null);
+
+  // Step-by-step journal wizard (1: header, 2: debit, 3: credit & review)
+  const [journalStep, setJournalStep] = useState<1 | 2 | 3>(1);
   // Camera state/refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -611,6 +662,37 @@ export default function Dashboard() {
     // eslint-disable-next-line no-console
     console.log("Financials consistency:", c);
   }, []);
+
+  // Inject dummy journals when demo mode is triggered
+  useEffect(() => {
+    if (demoRunId <= 0) return;
+
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const demoEntries = createDemoJournalEntries(todayISO);
+    setEntries(demoEntries);
+    setJournalPage(1);
+
+    // Also reset the wizard inputs so the user sees a clean slate
+    setDebitLinesUI([{ id: `${Date.now()}-d0`, accountId: "", amount: "" }]);
+    setCreditLinesUI([{ id: `${Date.now()}-c0`, accountId: "", amount: "" }]);
+    setDescription("");
+    setDebitFilter("");
+    setCreditFilter("");
+    setShowDraftAlerts(false);
+    setJournalStep(1);
+    setDate(todayISO);
+  }, [demoRunId]);
+
+  const journalTotalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(entries.length / journalPageSize));
+  }, [entries.length]);
+
+  const journalPageSafe = Math.min(Math.max(1, journalPage), journalTotalPages);
+
+  const pagedEntries = useMemo(() => {
+    const start = (journalPageSafe - 1) * journalPageSize;
+    return entries.slice(start, start + journalPageSize);
+  }, [entries, journalPageSafe]);
 
   // Compute statements after journals
   const { bs, is, cfs, equity } = useMemo(() => {
@@ -909,16 +991,27 @@ export default function Dashboard() {
     (a.code + " " + a.name).toLowerCase().includes(creditFilter.toLowerCase()),
   );
 
+  const totalDebitUI = debitLinesUI.reduce(
+    (s, l) => s + (Number(l.amount) || 0),
+    0,
+  );
+  const totalCreditUI = creditLinesUI.reduce(
+    (s, l) => s + (Number(l.amount) || 0),
+    0,
+  );
+  const diffUI = Math.abs(totalDebitUI - totalCreditUI);
+  const hasAnyDebit = debitLinesUI.some(
+    (l) => l.accountId && Number(l.amount) > 0,
+  );
+  const hasAnyCredit = creditLinesUI.some(
+    (l) => l.accountId && Number(l.amount) > 0,
+  );
+  const isBalanced = totalDebitUI > 0 && totalCreditUI > 0 && diffUI < 0.0001;
+
   return (
     <div className="min-h-screen bg-transparent overflow-x-hidden">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <header className="flex items-center gap-4">
-          <h1 className="text-4xl font-extrabold text-primary mb-1">
-            Financial Reporting
-          </h1>
-        </header>
-
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-gray-600 mb-6 mt-1">
           This page provides a concise overview of financial performance, key
           metrics, and reports to help companies monitor revenue, cash flow, and
           profitability at a glance.
@@ -926,21 +1019,21 @@ export default function Dashboard() {
 
         {/* Cards */}
         <main className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-md min-w-0">
+          <div className="bg-white rounded-2xl p-6 shadow-md min-w-0 card-hover">
             <p className="text-lg">Total Revenue</p>
             <h3 className="text-4xl font-extrabold text-primary mt-4">
               {formatRpCompact(is.revenue)}
             </h3>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-md min-w-0">
+          <div className="bg-white rounded-2xl p-6 shadow-md min-w-0 card-hover">
             <p className="text-lg">Net Profit</p>
             <h3 className="text-4xl font-extrabold text-primary mt-4">
               {formatRpCompact(is.netIncome)}
             </h3>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-md min-w-0">
+          <div className="bg-white rounded-2xl p-6 shadow-md min-w-0 card-hover">
             <p className="text-lg">Net Change in Cash</p>
             <h3 className="text-4xl font-extrabold text-primary mt-4">
               {formatRpCompact(cfs.netChangeInCash)}
@@ -948,7 +1041,7 @@ export default function Dashboard() {
           </div>
 
           {/* Asset Mix Pie Chart */}
-          <div className="bg-white rounded-2xl p-6 shadow-md md:col-span-1 min-w-0">
+          <div className="bg-white rounded-2xl p-6 shadow-md md:col-span-1 min-w-0 card-hover">
             <div className="flex items-center justify-between">
               <p className="text-lg">Asset Mix</p>
               <span className="text-xs text-gray-500">
@@ -1006,7 +1099,7 @@ export default function Dashboard() {
           </div>
 
           {/* Camera Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-md md:col-span-1 min-w-0">
+          <div className="bg-white rounded-2xl p-6 shadow-md md:col-span-1 min-w-0 card-hover">
             <div className="flex items-center justify-between mb-2">
               <div className="flex flex-col">
                 <p className="text-lg">Camera</p>
@@ -1092,6 +1185,30 @@ export default function Dashboard() {
           {/* Journal Entry UI */}
           <section className="bg-white rounded-2xl p-6 shadow-md mb-6 md:col-span-3 min-w-0">
             <h2 className="text-xl font-semibold mb-4">Journal Entry</h2>
+
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+              {[1, 2, 3].map((s) => {
+                const step = s as 1 | 2 | 3;
+                const active = journalStep === step;
+                const disabled =
+                  (step === 2 && !date) || (step === 3 && !hasAnyDebit);
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => !disabled && setJournalStep(step)}
+                    disabled={disabled}
+                    className={
+                      active
+                        ? "px-3 py-1.5 rounded-full bg-primary text-white"
+                        : "px-3 py-1.5 rounded-full border text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    }
+                  >
+                    Step {step}
+                  </button>
+                );
+              })}
+            </div>
             {/* Draft Alerts Panel */}
             {showDraftAlerts && draftAlerts.length > 0 && (
               <div ref={alertPanelRef} className="mb-4 space-y-2">
@@ -1111,16 +1228,31 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="text-sm text-gray-600">Date</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="mt-1 w-full border rounded-md px-3 py-2"
-                />
+            {journalStep === 1 && (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="text-sm text-gray-600">Date</label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="mt-1 w-full border rounded-md px-3 py-2"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-sm text-gray-600">Description</label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Optional description"
+                    className="mt-1 w-full border rounded-md px-3 py-2"
+                  />
+                </div>
               </div>
+            )}
+
+            {journalStep === 2 && (
               <div>
                 <label className="text-sm text-gray-600">Debit Account</label>
                 <input
@@ -1202,142 +1334,166 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
-              <div>
-                <label className="text-sm text-gray-600">Credit Account</label>
-                <input
-                  type="text"
-                  value={creditFilter}
-                  onChange={(e) => setCreditFilter(e.target.value)}
-                  placeholder="Search account..."
-                  className="mt-1 w-full border rounded-md px-3 py-2"
-                />
-                <div className="mt-2 space-y-2">
-                  {creditLinesUI.map((row) => (
-                    <div key={row.id} className="flex flex-wrap gap-2">
-                      <select
-                        value={row.accountId}
-                        onChange={(e) =>
-                          setCreditLinesUI((prev) =>
-                            prev.map((r) =>
-                              r.id === row.id
-                                ? { ...r, accountId: e.target.value }
-                                : r,
-                            ),
-                          )
-                        }
-                        className="min-w-0 flex-1 border rounded-md px-3 py-2"
-                      >
-                        <option value="">Select credit account</option>
-                        {filteredCredit.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.code} — {a.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        min={0}
-                        value={row.amount}
-                        onChange={(e) =>
-                          setCreditLinesUI((prev) =>
-                            prev.map((r) =>
-                              r.id === row.id
-                                ? { ...r, amount: e.target.value }
-                                : r,
-                            ),
-                          )
-                        }
-                        placeholder="Amount"
-                        className="w-36 sm:w-40 border rounded-md px-3 py-2"
-                      />
-                      {creditLinesUI.length > 1 && (
-                        <button
-                          type="button"
-                          className="px-2 text-red-600 whitespace-nowrap"
-                          onClick={() =>
+            )}
+
+            {journalStep === 3 && (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600">
+                    Credit Account
+                  </label>
+                  <input
+                    type="text"
+                    value={creditFilter}
+                    onChange={(e) => setCreditFilter(e.target.value)}
+                    placeholder="Search account..."
+                    className="mt-1 w-full border rounded-md px-3 py-2"
+                  />
+                  <div className="mt-2 space-y-2">
+                    {creditLinesUI.map((row) => (
+                      <div key={row.id} className="flex flex-wrap gap-2">
+                        <select
+                          value={row.accountId}
+                          onChange={(e) =>
                             setCreditLinesUI((prev) =>
-                              prev.filter((r) => r.id !== row.id),
+                              prev.map((r) =>
+                                r.id === row.id
+                                  ? { ...r, accountId: e.target.value }
+                                  : r,
+                              ),
                             )
                           }
+                          className="min-w-0 flex-1 border rounded-md px-3 py-2"
                         >
-                          Remove
-                        </button>
-                      )}
+                          <option value="">Select credit account</option>
+                          {filteredCredit.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.code} — {a.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min={0}
+                          value={row.amount}
+                          onChange={(e) =>
+                            setCreditLinesUI((prev) =>
+                              prev.map((r) =>
+                                r.id === row.id
+                                  ? { ...r, amount: e.target.value }
+                                  : r,
+                              ),
+                            )
+                          }
+                          placeholder="Amount"
+                          className="w-36 sm:w-40 border rounded-md px-3 py-2"
+                        />
+                        {creditLinesUI.length > 1 && (
+                          <button
+                            type="button"
+                            className="px-2 text-red-600 whitespace-nowrap"
+                            onClick={() =>
+                              setCreditLinesUI((prev) =>
+                                prev.filter((r) => r.id !== row.id),
+                              )
+                            }
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCreditLinesUI((prev) => [
+                          ...prev,
+                          {
+                            id: `${Date.now()}-c${prev.length}`,
+                            accountId: "",
+                            amount: "",
+                          },
+                        ])
+                      }
+                      className="text-primary text-sm"
+                    >
+                      + Add credit line
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600">Review</p>
+                  <div className="mt-2 rounded-xl border bg-gray-50 p-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>Total Debit</span>
+                      <span className="font-semibold">
+                        {formatRupiah(totalDebitUI)}
+                      </span>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCreditLinesUI((prev) => [
-                        ...prev,
-                        {
-                          id: `${Date.now()}-c${prev.length}`,
-                          accountId: "",
-                          amount: "",
-                        },
-                      ])
-                    }
-                    className="text-primary text-sm"
-                  >
-                    + Add credit line
-                  </button>
+                    <div className="flex items-center justify-between mt-1">
+                      <span>Total Credit</span>
+                      <span className="font-semibold">
+                        {formatRupiah(totalCreditUI)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span>Difference</span>
+                      <span
+                        className={
+                          isBalanced
+                            ? "font-semibold text-emerald-700"
+                            : "font-semibold text-red-700"
+                        }
+                      >
+                        {formatRupiah(diffUI)}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-xs text-gray-500">
+                      {isBalanced
+                        ? "Balanced. You can post this journal."
+                        : "Not balanced yet. Make sure debit equals credit."}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="md:col-span-2">
-                <label className="text-sm text-gray-600">Description</label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional description"
-                  className="mt-1 w-full border rounded-md px-3 py-2"
-                />
-                {/* Totals */}
-                <div className="mt-3 text-sm text-gray-700 flex flex-wrap gap-x-6 gap-y-2">
-                  <span>
-                    Total Debit:{" "}
-                    {formatRupiah(
-                      debitLinesUI.reduce(
-                        (s, l) => s + (Number(l.amount) || 0),
-                        0,
-                      ),
-                    )}
-                  </span>
-                  <span>
-                    Total Credit:{" "}
-                    {formatRupiah(
-                      creditLinesUI.reduce(
-                        (s, l) => s + (Number(l.amount) || 0),
-                        0,
-                      ),
-                    )}
-                  </span>
-                  <span>
-                    Difference:{" "}
-                    {formatRupiah(
-                      Math.abs(
-                        debitLinesUI.reduce(
-                          (s, l) => s + (Number(l.amount) || 0),
-                          0,
-                        ) -
-                          creditLinesUI.reduce(
-                            (s, l) => s + (Number(l.amount) || 0),
-                            0,
-                          ),
-                      ),
-                    )}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 flex gap-3 flex-wrap">
+            )}
+            <div className="mt-4 flex gap-3 flex-wrap items-center">
               <button
-                onClick={handlePostClick}
-                className="bg-primary text-white px-4 py-2 rounded-md"
+                type="button"
+                onClick={() =>
+                  setJournalStep((s) => (s === 1 ? 1 : ((s - 1) as 1 | 2 | 3)))
+                }
+                disabled={journalStep === 1}
+                className="border px-4 py-2 rounded-md disabled:opacity-60"
               >
-                Post Journal
+                Back
               </button>
+
+              {journalStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={() => setJournalStep((s) => (s + 1) as 1 | 2 | 3)}
+                  disabled={
+                    (journalStep === 1 && !date) ||
+                    (journalStep === 2 && !hasAnyDebit)
+                  }
+                  className="bg-primary text-white px-4 py-2 rounded-md disabled:opacity-60"
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  onClick={handlePostClick}
+                  disabled={!hasAnyDebit || !hasAnyCredit || !isBalanced}
+                  className="bg-primary text-white px-4 py-2 rounded-md disabled:opacity-60"
+                >
+                  Post Journal
+                </button>
+              )}
+
               <button
+                type="button"
                 onClick={() => {
                   setDebitLinesUI([
                     { id: `${Date.now()}-d0`, accountId: "", amount: "" },
@@ -1348,6 +1504,8 @@ export default function Dashboard() {
                   setDescription("");
                   setDebitFilter("");
                   setCreditFilter("");
+                  setShowDraftAlerts(false);
+                  setJournalStep(1);
                 }}
                 className="border px-4 py-2 rounded-md"
               >
@@ -1371,7 +1529,7 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {entries.map((e) => {
+                      {pagedEntries.map((e) => {
                         const total = e.lines.reduce(
                           (s, l) => s + (l.side === "debit" ? l.amount : 0),
                           0,
@@ -1454,228 +1612,62 @@ export default function Dashboard() {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
 
-            {/* Accounts CRUD */}
-            <div className="mt-8 border-t pt-6">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <h3 className="text-lg font-semibold">Accounts (CRUD)</h3>
-                  <p className="text-xs text-gray-500">
-                    Manage debit/credit selectable accounts. Updates are
-                    reflected in the dropdowns above.
+                <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-sm text-gray-600">
+                    Showing {(journalPageSafe - 1) * journalPageSize + 1}–
+                    {Math.min(
+                      journalPageSafe * journalPageSize,
+                      entries.length,
+                    )}{" "}
+                    of {entries.length}
                   </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={resetAccountsToDefault}
-                  className="text-sm border px-3 py-1.5 rounded"
-                >
-                  Reset to default
-                </button>
-              </div>
-
-              {accountsError && (
-                <div className="mt-3 border border-red-200 bg-red-50 text-red-700 px-3 py-2 rounded text-sm">
-                  {accountsError}
-                </div>
-              )}
-
-              <div className="mt-4 grid lg:grid-cols-3 gap-4">
-                {/* Create / Edit */}
-                <div className="lg:col-span-1 border rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">
-                      {accountDraft.id ? "Edit account" : "Add new account"}
-                    </p>
-                    {accountDraft.id && (
-                      <button
-                        type="button"
-                        onClick={resetAccountDraft}
-                        className="text-sm text-gray-600 hover:underline"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-3 space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-600">Code</label>
-                      <input
-                        value={accountDraft.code}
-                        onChange={(e) =>
-                          setAccountDraft((p) => ({
-                            ...p,
-                            code: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g. 6100"
-                        className="mt-1 w-full border rounded-md px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600">Name</label>
-                      <input
-                        value={accountDraft.name}
-                        onChange={(e) =>
-                          setAccountDraft((p) => ({
-                            ...p,
-                            name: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g. Marketing Expense"
-                        className="mt-1 w-full border rounded-md px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600">Type</label>
-                      <select
-                        value={accountDraft.type}
-                        onChange={(e) =>
-                          setAccountDraft((p) => ({
-                            ...p,
-                            type: e.target.value as AccountType,
-                          }))
-                        }
-                        className="mt-1 w-full border rounded-md px-3 py-2"
-                      >
-                        <option value="asset">asset</option>
-                        <option value="liability">liability</option>
-                        <option value="equity">equity</option>
-                        <option value="revenue">revenue</option>
-                        <option value="expense">expense</option>
-                        <option value="distribution">distribution</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm text-gray-600">
-                          Statement
-                        </label>
-                        <select
-                          value={accountDraft.targetKind}
-                          onChange={(e) => {
-                            const kind = e.target
-                              .value as AccountDraft["targetKind"];
-                            const defaults =
-                              kind === "bs"
-                                ? Object.keys(balanceSheet2024)
-                                : kind === "is"
-                                  ? Object.keys(incomeStatement2024)
-                                  : Object.keys(changesInEquity2024);
-                            setAccountDraft((p) => ({
-                              ...p,
-                              targetKind: kind,
-                              targetField: defaults[0] || "cash",
-                            }));
-                          }}
-                          className="mt-1 w-full border rounded-md px-3 py-2"
-                        >
-                          <option value="bs">Balance Sheet</option>
-                          <option value="is">Income Statement</option>
-                          <option value="equity">Equity</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-600">Field</label>
-                        <select
-                          value={accountDraft.targetField}
-                          onChange={(e) =>
-                            setAccountDraft((p) => ({
-                              ...p,
-                              targetField: e.target.value,
-                            }))
-                          }
-                          className="mt-1 w-full border rounded-md px-3 py-2"
-                        >
-                          {availableTargetFields.map((f) => (
-                            <option key={f} value={f}>
-                              {f}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={upsertAccount}
-                      className="w-full bg-primary text-white px-4 py-2 rounded-md"
+                      onClick={() => setJournalPage(1)}
+                      disabled={journalPageSafe === 1}
+                      className="border px-3 py-1.5 rounded disabled:opacity-50"
                     >
-                      {accountDraft.id ? "Save changes" : "Add account"}
+                      First
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJournalPage((p) => Math.max(1, p - 1))}
+                      disabled={journalPageSafe === 1}
+                      className="border px-3 py-1.5 rounded disabled:opacity-50"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-sm text-gray-700 px-2">
+                      Page {journalPageSafe} / {journalTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setJournalPage((p) =>
+                          Math.min(journalTotalPages, p + 1),
+                        )
+                      }
+                      disabled={journalPageSafe === journalTotalPages}
+                      className="border px-3 py-1.5 rounded disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJournalPage(journalTotalPages)}
+                      disabled={journalPageSafe === journalTotalPages}
+                      className="border px-3 py-1.5 rounded disabled:opacity-50"
+                    >
+                      Last
                     </button>
                   </div>
                 </div>
-
-                {/* List */}
-                <div className="lg:col-span-2 border rounded-xl p-4">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <p className="font-medium">Accounts list</p>
-                    <input
-                      value={accountsQuery}
-                      onChange={(e) => setAccountsQuery(e.target.value)}
-                      placeholder="Search code/name/type..."
-                      className="border rounded-md px-3 py-2 text-sm w-full sm:w-72"
-                    />
-                  </div>
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-gray-600">
-                          <th className="py-2 pr-4">Code</th>
-                          <th className="py-2 pr-4">Name</th>
-                          <th className="py-2 pr-4">Type</th>
-                          <th className="py-2 pr-4">Target</th>
-                          <th className="py-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredAccountsForCrud.map((a) => (
-                          <tr key={a.id} className="border-t">
-                            <td className="py-2 pr-4 whitespace-nowrap">
-                              {a.code}
-                            </td>
-                            <td className="py-2 pr-4">{a.name}</td>
-                            <td className="py-2 pr-4 whitespace-nowrap">
-                              {a.type}
-                            </td>
-                            <td className="py-2 pr-4 whitespace-nowrap text-gray-600">
-                              {a.target.kind}:{String(a.target.field)}
-                            </td>
-                            <td className="py-2 whitespace-nowrap">
-                              <div className="flex items-center gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => startEditAccount(a)}
-                                  className="text-primary hover:underline"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteAccount(a.id)}
-                                  className="text-red-600 hover:underline"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {filteredAccountsForCrud.length === 0 && (
-                      <p className="text-sm text-gray-500 mt-3">
-                        No accounts found.
-                      </p>
-                    )}
-                  </div>
-                </div>
               </div>
-            </div>
+            )}
+
+            {/* Accounts CRUD removed by request */}
           </section>
         </main>
 

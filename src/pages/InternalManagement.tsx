@@ -9,6 +9,7 @@ import {
   StickyNote,
   TrendingUp,
 } from "lucide-react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   ResponsiveContainer,
   Tooltip as ReTooltip,
@@ -476,6 +477,7 @@ function RadialGauge({
 }
 
 export default function InternalManagement() {
+  usePageTitle("Internal Management");
   const [note, setNote] = useState<string>(mockData.business.campaignNotes);
   const [attendance, setAttendance] = useState(() => [
     ...mockData.workforce.attendance,
@@ -547,13 +549,7 @@ export default function InternalManagement() {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <header className="flex items-center gap-3">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-primary mb-1">
-            Internal Management
-          </h1>
-        </header>
-
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-gray-600 mb-6 mt-1">
           Operasional harian UMKM Kuliner: pantau rantai pasok, persediaan,
           tenaga kerja, dan kontrol internal dalam satu dasbor.
         </p>
@@ -561,7 +557,7 @@ export default function InternalManagement() {
         {/* Layout grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Supply Chain & Cost Accounting - prominent */}
-          <section className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-md min-w-0">
+          <section className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-md min-w-0 card-hover">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Factory className="w-5 h-5 text-gray-500" />
@@ -676,7 +672,7 @@ export default function InternalManagement() {
           </section>
 
           {/* Human Resources */}
-          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md min-w-0">
+          <section className="lg:col-span-4 bg-white rounded-2xl p-6 shadow-md min-w-0 card-hover">
             <div className="flex items-center gap-2 mb-3">
               <Users className="w-5 h-5 text-gray-500" />
               <h2 className="text-xl font-semibold">Smart Workforce</h2>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { Calendar, MapPin, Trophy, BookOpen, ExternalLink } from "lucide-react";
 
 type Opportunity = {
@@ -152,6 +153,7 @@ const tabs = [
 ] as const;
 
 function UmkmBerkembang() {
+  usePageTitle("UMKM Berkembang");
   const [activeTab, setActiveTab] =
     useState<(typeof tabs)[number]["key"]>("Event & Kompetisi");
 
@@ -163,12 +165,7 @@ function UmkmBerkembang() {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 bg-transparent">
-        <header className="flex items-center gap-3 mb-4">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-primary">
-            UMKM Berkembang
-          </h1>
-        </header>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-gray-600 mb-6 mt-1">
           Kurasi konten pengembangan UMKM: pelatihan, kompetisi, dan peluang
           ekspor dari tim riset internal.
         </p>
@@ -199,7 +196,7 @@ function UmkmBerkembang() {
           {filtered.map((item) => (
             <article
               key={item.id}
-              className="bg-white rounded-2xl shadow-md overflow-hidden"
+              className="bg-white rounded-2xl shadow-md overflow-hidden card-hover"
             >
               {/* Poster / Banner */}
               <div className="relative aspect-video bg-gray-100">

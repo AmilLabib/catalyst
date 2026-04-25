@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import {
   AlertTriangle,
   TrendingDown,
@@ -70,6 +71,7 @@ const mockAuditData = {
 };
 
 function DataDriven() {
+  usePageTitle("Data Driven");
   const [showWhatIf, setShowWhatIf] = useState(true);
 
   const spikeIdx = mockAuditData.financial.spikeIndex;
@@ -122,19 +124,14 @@ function DataDriven() {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="max-w-[80rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <header className="flex items-center gap-3 mb-2">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-primary">
-            AI Online Audit
-          </h1>
-        </header>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-gray-600 mb-6 mt-1">
           Deteksi anomali real-time dan rekomendasi berbasis data untuk
           keputusan bisnis yang lebih baik.
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Financial Audit Section */}
-          <section className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-md card-hover">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <TrendingDown className="w-5 h-5 text-red-600" />
@@ -205,7 +202,7 @@ function DataDriven() {
           </section>
 
           {/* Sales Intelligence Section */}
-          <section className="lg:col-span-5 bg-white rounded-2xl p-6 shadow-md">
+          <section className="lg:col-span-5 bg-white rounded-2xl p-6 shadow-md card-hover">
             <div className="flex items-center gap-2 mb-3">
               <TrendingDown className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-semibold">

@@ -1,11 +1,11 @@
+import { usePageTitle } from "../hooks/usePageTitle";
+
 export default function Subscription() {
+  usePageTitle("Subscription");
   return (
     <div className="min-h-screen bg-transparent py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <h1 className="text-4xl font-extrabold text-primary mb-2">
-          Subscription Packages
-        </h1>
-        <p className="text-gray-600 mb-8">
+        <p className="text-gray-600 mb-8 mt-1">
           Choose a subscription package that suits your company's conditions and
           objectives.
         </p>

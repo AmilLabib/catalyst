@@ -1,14 +1,18 @@
-import { Link } from "react-router-dom";
-import { Menu, Bell, Search } from "lucide-react";
+import { usePageTitleContext } from "../context/PageTitleContext";
+import { useDemoMode } from "../context/DemoModeContext";
+import { Menu, Bell, Search, PlayCircle } from "lucide-react";
 
 type Props = {
   onMobileMenu?: () => void;
 };
 
 export default function Navbar({ onMobileMenu }: Props) {
+  const { title: pageTitle } = usePageTitleContext();
+  const { triggerDemo } = useDemoMode();
+
   return (
     <header className="bg-white border-b">
-      <div className="max-w-[90rem] mx-auto px-4 md:px-8 py-3 flex items-center gap-4">
+      <div className="max-w-[90rem] mx-auto px-4 md:px-8 py-3 flex items-center gap-4 relative">
         {/* Mobile menu button */}
         <div className="md:hidden">
           <button
@@ -19,18 +23,15 @@ export default function Navbar({ onMobileMenu }: Props) {
             <Menu className="w-6 h-6" />
           </button>
         </div>
-        {/* Logo / title */}
-        <div className="flex items-center gap-2 md:gap-3">
-          <Link to="/dashboard" className="flex items-center gap-2 md:gap-3">
-            <span className="hidden sm:inline text-lg md:text-xl font-extrabold text-primary tracking-wide">
-              Dashboard
-            </span>
-          </Link>
-        </div>
 
-        {/* Search bar */}
-        <div className="flex-1 flex justify-center">
-          <div className="w-full max-w-xl relative">
+        {/* Page title + Search bar */}
+        <div className="flex-1 flex items-center justify-start gap-4 min-w-0">
+          <div className="min-w-0">
+            <h1 className="px-8 text-base sm:text-lg font-extrabold text-primary truncate max-w-[45vw]">
+              {pageTitle}
+            </h1>
+          </div>
+          <div className="w-full max-w-xl relative min-w-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <Search className="w-4 h-4" />
             </span>
@@ -50,6 +51,17 @@ export default function Navbar({ onMobileMenu }: Props) {
           >
             <Bell className="w-5 h-5 text-gray-600" />
             <span className="absolute top-1.5 right-1.5 block w-2 h-2 rounded-full bg-red-500" />
+          </button>
+
+          <button
+            type="button"
+            onClick={triggerDemo}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-primary text-white hover:bg-primary/90 text-sm"
+            aria-label="Demo mode"
+            title="Demo mode (inject dummy data)"
+          >
+            <PlayCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Demo mode</span>
           </button>
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100">
             <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
