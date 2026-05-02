@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchMarketPricing } from "../utils/pricing";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useDemoMode } from "../context/DemoModeContext";
 import {
   BarChart3,
   Image as ImageIcon,
   Sparkles,
-  TrendingUp,
   Minus,
   Plus,
   RefreshCw,
@@ -18,6 +18,8 @@ type FormState = {
   monthlyFixed: number | "";
   estMonthlySales: number | "";
 };
+
+type ScenarioKey = "baseline" | "optimistic" | "conservative";
 
 const initialState: FormState = {
   productName: "",
@@ -79,7 +81,9 @@ function Stepper({
 
 export default function SmartPricing() {
   usePageTitle("Smart Pricing");
+  const { demoRunId } = useDemoMode();
   const [form, setForm] = useState<FormState>(initialState);
+  const [scenario, setScenario] = useState<ScenarioKey>("baseline");
   const [market, setMarket] = useState<{
     average: number;
     lowest: number;
@@ -87,6 +91,35 @@ export default function SmartPricing() {
   } | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const priceStep = 500;
+  const fixedStep = 50_000;
+  const salesStep = 10;
+
+  const presets = useMemo(
+    () =>
+      ({
+        baseline: { label: "Baseline", avgFactor: 1.0, marginTarget: 0.2 },
+        optimistic: {
+          label: "Optimistic",
+          avgFactor: 1.08,
+          marginTarget: 0.25,
+        },
+        conservative: {
+          label: "Conservative",
+          avgFactor: 0.94,
+          marginTarget: 0.15,
+        },
+      }) satisfies Record<
+        ScenarioKey,
+        {
+          label: string;
+          avgFactor: number;
+          marginTarget: number;
+        }
+      >,
+    [],
+  );
 
   const handleChange = (k: keyof FormState, v: string) => {
     if (k === "productName") setForm((s) => ({ ...s, [k]: v }));
@@ -115,7 +148,7 @@ export default function SmartPricing() {
     // - If market average is well above break-even, recommend between avg and highest (conservative)
     // - If market average near break-even, recommend small premium (10-20%) over break-even
     // - If market average below break-even, recommend price at break-even and suggest cost reduction
-    const marginTarget = 0.2; // 20% target margin
+    const marginTarget = presets[scenario].marginTarget;
     if (marketAvg >= breakEven * 1.25) {
       // market can bear premium
       const recommended = Math.min(
@@ -214,6 +247,13 @@ export default function SmartPricing() {
     setLoading(false);
   };
 
+  // Navbar Demo Mode integration: trigger the Ice Tea demo on demand.
+  useEffect(() => {
+    if (!demoRunId) return;
+    void handleDemoIcedTea();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoRunId]);
+
   const breakEven = breakEvenPerUnit();
 
   const cogsNum = safeNumber(form.cogs);
@@ -227,9 +267,15 @@ export default function SmartPricing() {
     estMonthlySales: salesNum !== null && salesNum > 0,
   };
 
-  const priceStep = 500;
-  const fixedStep = 50_000;
-  const salesStep = 10;
+  const effectiveMarket = useMemo(() => {
+    if (!market) return null;
+    const f = presets[scenario].avgFactor;
+    return {
+      average: Math.max(0, Math.round(market.average * f)),
+      lowest: market.lowest,
+      highest: market.highest,
+    };
+  }, [market, presets, scenario]);
 
   let recommendedPrice: number | null = null;
   let profitMarginPct: number | null = null;
@@ -237,8 +283,8 @@ export default function SmartPricing() {
     "Provide product details and fetch market data to get a recommendation.";
 
   const recAndMargin = useMemo(() => {
-    if (!market || breakEven === null) return null;
-    const rec = computeRecommendation(market.average, breakEven);
+    if (!effectiveMarket || breakEven === null) return null;
+    const rec = computeRecommendation(effectiveMarket.average, breakEven);
     const c = cogsNum ?? 0;
     const marginPct = rec !== 0 ? ((rec - c) / rec) * 100 : null;
     const profitPerUnit = rec - c;
@@ -249,12 +295,12 @@ export default function SmartPricing() {
       profitPerUnit,
       profitPerMonth,
     };
-  }, [market, breakEven, cogsNum, salesNum]);
+  }, [effectiveMarket, breakEven, cogsNum, salesNum]);
 
-  if (market && breakEven !== null) {
+  if (effectiveMarket && breakEven !== null) {
     recommendedPrice =
       recAndMargin?.recommended ??
-      computeRecommendation(market.average, breakEven);
+      computeRecommendation(effectiveMarket.average, breakEven);
 
     // Ensure no division by zero and compute margin as %
     if (recommendedPrice && Number(form.cogs) >= 0 && recommendedPrice !== 0) {
@@ -266,21 +312,26 @@ export default function SmartPricing() {
       profitMarginPct = null;
     }
 
-    if (market.average >= breakEven * 1.25) {
-      rationale = `Market average (${formatCurrency(Math.round(market.average))}) is well above your break-even (${formatCurrency(Math.round(breakEven))}). We recommend a competitive premium while testing elasticity.`;
-    } else if (market.average >= breakEven * 0.95) {
-      rationale = `Market average (${formatCurrency(Math.round(market.average))}) is near your break-even. Recommend a modest margin and monitor conversions.`;
+    if (effectiveMarket.average >= breakEven * 1.25) {
+      rationale = `Market average (${formatCurrency(Math.round(effectiveMarket.average))}) is well above your break-even (${formatCurrency(Math.round(breakEven))}). We recommend a competitive premium while testing elasticity.`;
+    } else if (effectiveMarket.average >= breakEven * 0.95) {
+      rationale = `Market average (${formatCurrency(Math.round(effectiveMarket.average))}) is near your break-even. Recommend a modest margin and monitor conversions.`;
     } else {
-      rationale = `Market prices (${formatCurrency(Math.round(market.lowest))} - ${formatCurrency(Math.round(market.highest))}) are below your break-even (${formatCurrency(Math.round(breakEven))}). Consider reducing COGS or lowering fixed costs before pricing above break-even.`;
+      rationale = `Market prices (${formatCurrency(Math.round(effectiveMarket.lowest))} - ${formatCurrency(Math.round(effectiveMarket.highest))}) are below your break-even (${formatCurrency(Math.round(breakEven))}). Consider reducing COGS or lowering fixed costs before pricing above break-even.`;
     }
   }
 
   const comparison = useMemo(() => {
-    if (!market || breakEven === null || recommendedPrice === null) return null;
-    const max = Math.max(market.highest, market.average, recommendedPrice);
+    if (!effectiveMarket || breakEven === null || recommendedPrice === null)
+      return null;
+    const max = Math.max(
+      effectiveMarket.highest,
+      effectiveMarket.average,
+      recommendedPrice,
+    );
     const min = Math.min(
-      market.lowest,
-      market.average,
+      effectiveMarket.lowest,
+      effectiveMarket.average,
       recommendedPrice,
       breakEven,
     );
@@ -290,10 +341,30 @@ export default function SmartPricing() {
       min,
       max,
       breakEvenPct: pct(breakEven),
-      avgPct: pct(market.average),
+      avgPct: pct(effectiveMarket.average),
       recPct: pct(recommendedPrice),
     };
-  }, [market, breakEven, recommendedPrice]);
+  }, [effectiveMarket, breakEven, recommendedPrice]);
+
+  const sensitivity = useMemo(() => {
+    if (!effectiveMarket || breakEven === null) return null;
+    const avg = effectiveMarket.average;
+    const variants = [
+      { key: "-10%", avg: avg * 0.9 },
+      { key: "Base", avg },
+      { key: "+10%", avg: avg * 1.1 },
+    ] as const;
+    return variants.map((v) => {
+      const rec = computeRecommendation(v.avg, breakEven);
+      const c = cogsNum ?? 0;
+      const marginPct = rec !== 0 ? ((rec - c) / rec) * 100 : null;
+      return {
+        label: v.key,
+        recommended: rec,
+        marginPct: marginPct === null ? null : Math.round(marginPct * 10) / 10,
+      };
+    });
+  }, [breakEven, cogsNum, computeRecommendation, effectiveMarket]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -324,19 +395,38 @@ export default function SmartPricing() {
             >
               <RefreshCw className="w-4 h-4" /> Reset
             </button>
-            <button
-              type="button"
-              onClick={handleDemoIcedTea}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 text-sm"
-            >
-              <TrendingUp className="w-4 h-4" /> Demo: Ice Tea
-            </button>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 rounded-2xl border bg-gray-50/50 p-5 card-hover">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Scenario
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(Object.keys(presets) as ScenarioKey[]).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setScenario(k)}
+                      className={`px-3 py-1.5 rounded-xl border text-sm transition-colors ${
+                        scenario === k
+                          ? "bg-primary text-white border-primary"
+                          : "bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      {presets[k].label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Mengubah asumsi market average & target margin untuk
+                  eksplorasi cepat.
+                </p>
+              </div>
+
               <div>
                 <label className="text-sm font-medium text-gray-700">
                   Product name
@@ -404,6 +494,23 @@ export default function SmartPricing() {
                     }
                   />
                 </div>
+                {form.cogs !== "" && (
+                  <div className="mt-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={50_000}
+                      step={priceStep}
+                      value={Number(form.cogs)}
+                      onChange={(e) => handleChange("cogs", e.target.value)}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-[11px] text-gray-500">
+                      <span>0</span>
+                      <span>50k</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -452,6 +559,25 @@ export default function SmartPricing() {
                     }
                   />
                 </div>
+                {form.monthlyFixed !== "" && (
+                  <div className="mt-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={50_000_000}
+                      step={fixedStep}
+                      value={Number(form.monthlyFixed)}
+                      onChange={(e) =>
+                        handleChange("monthlyFixed", e.target.value)
+                      }
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-[11px] text-gray-500">
+                      <span>0</span>
+                      <span>50jt</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -500,6 +626,25 @@ export default function SmartPricing() {
                     }
                   />
                 </div>
+                {form.estMonthlySales !== "" && (
+                  <div className="mt-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={5_000}
+                      step={salesStep}
+                      value={Number(form.estMonthlySales)}
+                      onChange={(e) =>
+                        handleChange("estMonthlySales", e.target.value)
+                      }
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-[11px] text-gray-500">
+                      <span>0</span>
+                      <span>5k</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -537,6 +682,32 @@ export default function SmartPricing() {
                       Math.round(recAndMargin?.profitPerMonth ?? 0),
                     )}
                   </span>
+                </div>
+              )}
+
+              {sensitivity && (
+                <div className="pt-3 mt-3 border-t">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">
+                    Sensitivity (market avg)
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {sensitivity.map((s) => (
+                      <div
+                        key={s.label}
+                        className="rounded-xl border bg-gray-50 p-2"
+                      >
+                        <p className="text-[11px] text-gray-500">{s.label}</p>
+                        <p className="text-xs font-semibold text-gray-900">
+                          {formatCurrency(s.recommended)}
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          {s.marginPct === null
+                            ? "—"
+                            : `${s.marginPct}% margin`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

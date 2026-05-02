@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
   AlertTriangle,
@@ -307,10 +308,13 @@ function DataDriven() {
               </li>
               <li>Tinjau jadwal shift malam dan kebijakan kehadiran.</li>
             </ul>
-            <button className="mt-auto inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white shadow">
+            <Link
+              to="/subscription"
+              className="mt-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary text-white shadow"
+            >
               Konsultasikan Masalah Ini dengan Pakar CATALYST
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </Link>
           </section>
         </div>
       </div>
