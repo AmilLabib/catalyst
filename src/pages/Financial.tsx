@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Anthropic from "@anthropic-ai/sdk";
 import {
   PieChart,
   Pie,
@@ -16,7 +17,6 @@ import {
   formatRupiah,
   checkConsistency,
 } from "../data/financials";
-import GeminiAssistant from "../components/GeminiAssistant";
 import { useDemoMode } from "../context/DemoModeContext";
 
 // Removed unused chart demo data
@@ -615,6 +615,20 @@ function formatRpCompact(value: number) {
 
 import { usePageTitle } from "../hooks/usePageTitle";
 
+const getBaseUrl = () => {
+  if (import.meta.env.DEV) {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+    return `${origin}/anthropic`;
+  }
+  return import.meta.env.VITE_ANTHROPIC_BASE_URL || "https://ai.olagon.site";
+};
+
+const anthropic = new Anthropic({
+  apiKey: import.meta.env.VITE_CLAUDE_API_KEY || "API_KEY_ANDA",
+  baseURL: getBaseUrl(),
+  dangerouslyAllowBrowser: true,
+});
+
 export default function Financial() {
   usePageTitle("Financial");
   const { demoRunId } = useDemoMode();
@@ -656,6 +670,14 @@ export default function Financial() {
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+
+  // Scan Struk States
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [scanType, setScanType] = useState<"penjualan" | "pembelian" | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [showDataModal, setShowDataModal] = useState(false);
+  const [scannedData, setScannedData] = useState<{items: {name: string, price: number}[]} | null>(null);
 
   useEffect(() => {
     const c = checkConsistency();
@@ -969,7 +991,8 @@ export default function Financial() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, w, h);
-    const dataUrl = canvas.toDataURL("image/png");
+    // Compress image to JPEG format to avoid payload too large errors
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
     setPhotoDataUrl(dataUrl);
   };
 
@@ -980,6 +1003,137 @@ export default function Financial() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const openCameraModal = (type: "penjualan" | "pembelian") => {
+    setScanType(type);
+    setShowCameraModal(true);
+    setPhotoDataUrl(null);
+    setAnalysisError(null);
+    startCamera();
+  };
+
+  const closeCameraModal = () => {
+    setShowCameraModal(false);
+    stopCamera();
+    setPhotoDataUrl(null);
+    setScanType(null);
+    setAnalysisError(null);
+  };
+
+  const retakePhoto = () => {
+    setPhotoDataUrl(null);
+    setAnalysisError(null);
+  };
+
+  const analyzePhoto = async () => {
+    if (!photoDataUrl) return;
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    try {
+      const base64Data = photoDataUrl.split(',')[1];
+      const response = await anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/jpeg",
+                  data: base64Data
+                }
+              },
+              {
+                type: "text",
+                text: `Anda adalah asisten ekstraksi data yang sangat akurat. Tugas Anda adalah mengekstrak teks HANYA dari barang yang benar-benar tercetak di gambar struk ini.
+ATURAN SANGAT KETAT:
+1. HANYA ekstrak nama barang dan harga yang TERLIHAT JELAS di gambar.
+2. DILARANG KERAS menebak (hallucinate), mengarang, atau menambahkan barang yang tidak ada di struk.
+3. Jika gambar buram atau teks tidak terbaca, LEWATI barang tersebut atau kembalikan array kosong {"items": []}.
+4. JANGAN PERNAH mengembalikan data contoh di bawah ini.
+
+Format output (hanya kembalikan JSON murni, tanpa teks lain):
+{"items": [{"name": "contoh nama produk asli di struk", "price": 50000}]}`
+              }
+            ]
+          }
+        ]
+      });
+
+      const textBlock = response.content.find(c => c.type === 'text');
+      let text = textBlock && textBlock.type === 'text' ? textBlock.text : "{}";
+      
+      // Clean up potential markdown formatting
+      text = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      
+      // Extract just the JSON object
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        text = text.slice(firstBrace, lastBrace + 1);
+      } else {
+        text = '{"items": []}';
+      }
+
+      const parsed = JSON.parse(text);
+      setScannedData(parsed);
+      setShowCameraModal(false);
+      stopCamera();
+      setShowDataModal(true);
+    } catch (err: any) {
+      console.error(err);
+      setAnalysisError(err?.message || "Gagal menganalisis gambar.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const updateScannedItem = (index: number, field: 'name' | 'price', value: string) => {
+    if (!scannedData) return;
+    const newItems = [...scannedData.items];
+    if (field === 'name') newItems[index].name = value;
+    else newItems[index].price = Number(value);
+    setScannedData({ items: newItems });
+  };
+
+  const removeScannedItem = (index: number) => {
+    if (!scannedData) return;
+    const newItems = scannedData.items.filter((_, i) => i !== index);
+    setScannedData({ items: newItems });
+  };
+
+  const addScannedItem = () => {
+    if (!scannedData) return;
+    setScannedData({ items: [...scannedData.items, { name: "", price: 0 }] });
+  };
+
+  const submitScannedData = () => {
+    if (!scannedData || !scanType) return;
+    const total = scannedData.items.reduce((sum, item) => sum + item.price, 0);
+    
+    const newEntry: JournalEntry = {
+      id: `${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
+      description: `Scan Struk ${scanType === "penjualan" ? "Penjualan" : "Pembelian"}`,
+      lines: scanType === "penjualan" 
+        ? [
+            { id: `${Date.now()}-1`, side: "debit", accountId: "cash", amount: total },
+            { id: `${Date.now()}-2`, side: "credit", accountId: "rev", amount: total }
+          ]
+        : [
+            { id: `${Date.now()}-1`, side: "debit", accountId: "inv", amount: total },
+            { id: `${Date.now()}-2`, side: "credit", accountId: "cash", amount: total }
+          ]
+    };
+
+    setEntries(prev => [newEntry, ...prev]);
+    setShowDataModal(false);
+    setScannedData(null);
+    setScanType(null);
+  };
 
   const removeEntry = (id: string) =>
     setEntries((prev) => prev.filter((e) => e.id !== id));
@@ -1098,89 +1252,164 @@ export default function Financial() {
             </div>
           </div>
 
-          {/* Camera Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-md md:col-span-1 min-w-0 card-hover">
+          {/* Scan Struk Card */}
+          <div className="bg-white rounded-2xl p-6 shadow-md md:col-span-1 min-w-0 card-hover md:col-span-2">
             <div className="flex items-center justify-between mb-2">
               <div className="flex flex-col">
-                <p className="text-lg">Camera</p>
+                <p className="text-lg">Scan Struk</p>
                 <p className="text-xs text-gray-500">
-                  Scan struk belanja/penjualan untuk mencatat jurnal secara
-                  otomatis
+                  Scan struk belanja/penjualan untuk mencatat jurnal secara otomatis
                 </p>
               </div>
-              <span
-                className={`text-xs ${
-                  isCameraOn ? "text-green-600" : "text-gray-500"
-                }`}
-              >
-                {isCameraOn ? "On" : "Off"}
-              </span>
             </div>
-            {cameraError && (
-              <div className="mb-2 border border-red-200 bg-red-50 text-red-700 px-3 py-2 rounded text-xs">
-                {cameraError}
-              </div>
-            )}
-            <div className="flex gap-2 mb-3">
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
               <button
                 type="button"
-                onClick={startCamera}
-                className="px-3 py-1.5 rounded bg-primary text-white disabled:opacity-60"
-                disabled={isCameraOn}
+                onClick={() => openCameraModal("penjualan")}
+                className="px-4 py-2.5 rounded-lg bg-primary text-white flex-1 font-medium shadow text-sm"
               >
-                Start
+                Penjualan
               </button>
               <button
                 type="button"
-                onClick={stopCamera}
-                className="px-3 py-1.5 rounded border disabled:opacity-60"
-                disabled={!isCameraOn}
+                onClick={() => openCameraModal("pembelian")}
+                className="px-4 py-2.5 rounded-lg border border-primary text-primary flex-1 font-medium shadow text-sm"
               >
-                Stop
-              </button>
-              <button
-                type="button"
-                onClick={capturePhoto}
-                className="px-3 py-1.5 rounded border disabled:opacity-60"
-                disabled={!isCameraOn}
-              >
-                Capture
+                Pembelian
               </button>
             </div>
-            <div
-              className="w-full bg-black rounded-md overflow-hidden"
-              style={{ height: 180 }}
-            >
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {photoDataUrl && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-600 mb-1">Last capture:</p>
-                <img
-                  src={photoDataUrl}
-                  alt="Captured"
-                  className="w-full rounded border"
-                />
-              </div>
-            )}
             {/* Hidden canvas used for snapshots */}
             <canvas ref={canvasRef} style={{ display: "none" }} />
           </div>
 
-          {/* AI Assistant Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-md md:col-span-1 min-w-0">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-lg">AI Assistant</p>
-              <span className="text-xs text-gray-500">Gemini</span>
+          {showCameraModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center">
+                  <h3 className="font-semibold text-lg">
+                    Scan Struk {scanType === "penjualan" ? "Penjualan" : "Pembelian"}
+                  </h3>
+                  <button onClick={closeCameraModal} className="text-gray-500 hover:text-gray-800">
+                    Tutup
+                  </button>
+                </div>
+                <div className="p-4 bg-gray-50">
+                  {!photoDataUrl ? (
+                    <div className="relative">
+                      <div className="w-full bg-black rounded-md overflow-hidden aspect-[3/4] sm:aspect-video flex items-center justify-center relative">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                        {cameraError && (
+                          <div className="absolute top-4 left-4 right-4 border border-red-200 bg-red-50 text-red-700 px-3 py-2 rounded text-xs z-10">
+                            {cameraError}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md flex items-center gap-2 disabled:opacity-50"
+                          disabled={!isCameraOn}
+                        >
+                          📸 Ambil Foto
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative flex flex-col items-center">
+                       <div className="w-full bg-gray-200 rounded-md overflow-hidden aspect-[3/4] sm:aspect-video flex items-center justify-center">
+                         <img src={photoDataUrl} alt="Captured" className="w-full h-full object-contain" />
+                       </div>
+                       {analysisError && (
+                         <div className="mt-4 border border-red-200 bg-red-50 text-red-700 px-3 py-2 rounded text-sm w-full text-center">
+                           {analysisError}
+                         </div>
+                       )}
+                       <div className="mt-4 flex justify-center gap-3 w-full">
+                         <button
+                           type="button"
+                           onClick={retakePhoto}
+                           disabled={isAnalyzing}
+                           className="px-4 py-2 rounded-md border border-gray-300 font-medium bg-white disabled:opacity-50"
+                         >
+                           Ulangi
+                         </button>
+                         <button
+                           type="button"
+                           onClick={analyzePhoto}
+                           disabled={isAnalyzing}
+                           className="px-6 py-2 rounded-md bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-70 transition-all min-w-[160px]"
+                         >
+                           {isAnalyzing && (
+                             <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                             </svg>
+                           )}
+                           {isAnalyzing ? "Menganalisis..." : "Analisis Struk"}
+                         </button>
+                       </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <GeminiAssistant />
-          </div>
+          )}
+
+          {showDataModal && scannedData && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center">
+                  <h3 className="font-semibold text-lg">Konfirmasi Data Struk</h3>
+                  <button onClick={() => setShowDataModal(false)} className="text-gray-500 hover:text-gray-800">
+                    Tutup
+                  </button>
+                </div>
+                <div className="p-4 max-h-[70vh] overflow-y-auto">
+                  <div className="space-y-4">
+                     {scannedData.items.map((item, index) => (
+                       <div key={index} className="flex gap-2 items-center">
+                         <input 
+                           value={item.name} 
+                           onChange={e => updateScannedItem(index, 'name', e.target.value)} 
+                           className="border rounded p-2 flex-1" 
+                           placeholder="Nama Barang"
+                         />
+                         <input 
+                           type="number"
+                           value={item.price} 
+                           onChange={e => updateScannedItem(index, 'price', e.target.value)} 
+                           className="border rounded p-2 w-32" 
+                           placeholder="Harga"
+                         />
+                         <button onClick={() => removeScannedItem(index)} className="text-red-500 p-2 font-bold">✕</button>
+                       </div>
+                     ))}
+                     <button onClick={addScannedItem} className="text-primary text-sm font-medium">+ Tambah Barang</button>
+                     <div className="pt-4 border-t mt-4 flex justify-between font-bold">
+                       <span>Total</span>
+                       <span>{formatRupiah(scannedData.items.reduce((s, i) => s + Number(i.price), 0))}</span>
+                     </div>
+                  </div>
+                </div>
+                <div className="p-4 border-t bg-gray-50 flex justify-end">
+                   <button
+                     type="button"
+                     onClick={submitScannedData}
+                     className="px-6 py-2 rounded-md bg-primary text-white font-medium shadow-sm"
+                   >
+                     Input Jurnal
+                   </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Journal Entry UI */}
           <section className="bg-white rounded-2xl p-6 shadow-md mb-6 md:col-span-3 min-w-0">

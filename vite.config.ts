@@ -12,6 +12,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/anthropic": {
+        target: "https://ai.olagon.site",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/anthropic/, ""),
+      },
     },
   },
 });
