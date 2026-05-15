@@ -616,11 +616,8 @@ function formatRpCompact(value: number) {
 import { usePageTitle } from "../hooks/usePageTitle";
 
 const getBaseUrl = () => {
-  if (import.meta.env.DEV) {
-    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
-    return `${origin}/anthropic`;
-  }
-  return import.meta.env.VITE_ANTHROPIC_BASE_URL || "https://ai.olagon.site";
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+  return `${origin}/anthropic`;
 };
 
 const anthropic = new Anthropic({

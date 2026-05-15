@@ -4,15 +4,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { useLocation } from "react-router-dom";
 
 const getBaseUrl = () => {
-  if (import.meta.env.DEV) {
-    // Anthropic SDK requires an absolute URL, so we construct it from window.location
-    const origin =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "http://localhost:5173";
-    return `${origin}/anthropic`;
-  }
-  return import.meta.env.VITE_ANTHROPIC_BASE_URL || "https://ai.olagon.site";
+  const origin =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "http://localhost:5173";
+  return `${origin}/anthropic`;
 };
 
 const anthropic = new Anthropic({
