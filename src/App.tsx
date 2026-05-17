@@ -10,6 +10,8 @@ import UmkmBerkembang from "./pages/UmkmBerkembang";
 import Permodalan from "./pages/Permodalan";
 import Subscription from "./pages/Subscription";
 import SmartPricing from "./components/SmartPricing";
+import CariDistributor from "./pages/CariDistributor";
+import Kasir from "./pages/Kasir";
 
 function LoginScreen() {
   const [passwordShown, setPasswordShown] = useState(false);
@@ -94,6 +96,8 @@ export default function App() {
         <Route path="/permodalan" element={<Permodalan />} />
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/smart-pricing" element={<SmartPricing />} />
+        <Route path="/cari-distributor" element={<CariDistributor />} />
+        <Route path="/kasir" element={<Kasir />} />
       </Route>
     </Routes>
   );

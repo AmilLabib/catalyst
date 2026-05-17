@@ -14,6 +14,8 @@ import {
   Settings,
   LogOut,
   User2,
+  Map,
+  ShoppingCart,
 } from "lucide-react";
 
 type Props = {
@@ -114,12 +116,14 @@ export default function Sidebar({ mobileOpen = false, onClose }: Props) {
               Modules
             </p>
             <div className="space-y-1">
+              {item("Kasir POS", "/kasir", ShoppingCart)}
               {item("Financial Reporting", "/financial", BarChart2)}
               {item("Internal Management", "/internal-management", Factory)}
               {item("Data Driven Audit", "/data-driven", AlertTriangle)}
               {item("UMKM Berkembang", "/umkm-berkembang", Trophy)}
               {item("Permodalan", "/permodalan", ShieldCheck)}
               {item("Subscription", "/subscription", CircleDollarSign)}
+              {item("Cari Distributor", "/cari-distributor", Map)}
             </div>
           </div>
         </nav>
@@ -163,6 +167,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: Props) {
               {item("UMKM Berkembang", "/umkm-berkembang", Trophy)}
               {item("Permodalan", "/permodalan", ShieldCheck)}
               {item("Subscription", "/subscription", CircleDollarSign)}
+              {item("Cari Distributor", "/cari-distributor", Map)}
               {item("Smart Pricing", "/smart-pricing", Calculator)}
             </nav>
           </div>

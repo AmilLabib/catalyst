@@ -733,55 +733,66 @@ export default function SmartPricing() {
           </div>
 
           <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-2xl border bg-white p-5 card-hover">
+            <div className="rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-white to-white p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
-                <h5 className="font-semibold">Market Snapshot</h5>
-                <span className="text-xs text-gray-500">IDR</span>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <ImageIcon className="w-4 h-4 text-primary" />
+                  </div>
+                  <h5 className="font-bold text-lg text-gray-900">Market Snapshot</h5>
+                </div>
+                <span className="px-2 py-1 bg-gray-100 rounded-md text-xs font-medium text-gray-600">IDR</span>
               </div>
 
               {market ? (
-                <div className="mt-3">
+                <div className="mt-5">
                   {imageUrl ? (
-                    <div className="mb-3 rounded-xl overflow-hidden border bg-gray-50">
+                    <div className="mb-4 rounded-xl overflow-hidden border border-primary/10 shadow-sm relative group">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10" />
                       <img
                         src={imageUrl}
                         alt={form.productName || "product"}
-                        className="w-full h-40 object-cover"
+                        className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
                       />
                     </div>
                   ) : (
-                    <div className="mb-3 rounded-xl border bg-gray-50 p-4 text-sm text-gray-500 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4" /> Tidak ada gambar produk.
+                    <div className="mb-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/50 p-6 text-sm text-gray-500 flex flex-col items-center justify-center gap-2">
+                      <ImageIcon className="w-8 h-8 text-gray-300" />
+                      <span>Tidak ada gambar produk.</span>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl bg-gray-50 border p-3">
-                      <p className="text-xs text-gray-500">Lowest</p>
-                      <p className="font-bold text-gray-900">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 items-center">
+                    <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-3 text-center">
+                      <p className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-gray-500 mb-1">Lowest</p>
+                      <p className="font-semibold text-gray-900 text-sm sm:text-base">
                         {formatCurrency(market.lowest)}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-gray-50 border p-3">
-                      <p className="text-xs text-gray-500">Average</p>
-                      <p className="font-extrabold text-primary">
+                    <div className="rounded-xl bg-primary text-white shadow-lg p-3 sm:p-4 text-center transform scale-105 z-10 border border-white/20">
+                      <p className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-white/80 mb-1">Average</p>
+                      <p className="font-extrabold text-white text-sm sm:text-base">
                         {formatCurrency(market.average)}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-gray-50 border p-3">
-                      <p className="text-xs text-gray-500">Highest</p>
-                      <p className="font-bold text-gray-900">
+                    <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-3 text-center">
+                      <p className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-gray-500 mb-1">Highest</p>
+                      <p className="font-semibold text-gray-900 text-sm sm:text-base">
                         {formatCurrency(market.highest)}
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 mt-3">
-                  Belum ada data pasar. Klik <strong>Fetch Market Data</strong>
-                  atau coba demo.
-                </p>
+                <div className="mt-6 flex flex-col items-center justify-center py-6 text-center">
+                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                    <BarChart3 className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Belum ada data pasar. <br/>Klik <strong className="text-primary">Fetch Market Data</strong> atau coba demo.
+                  </p>
+                </div>
               )}
             </div>
 
